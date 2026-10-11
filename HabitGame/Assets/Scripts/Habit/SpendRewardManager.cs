@@ -10,7 +10,8 @@ public class SpendRewardManager : MonoBehaviour
     [SerializeField] private TextMeshProUGUI totalGoldText;
     [SerializeField] private TextMeshProUGUI baseGoldText;
     [SerializeField] private TextMeshProUGUI bonusGoldText;
-
+    // 지난주 확정 보상 / 이번 주 예상 보상 제목
+    [SerializeField] private TextMeshProUGUI rewardTitleText;
     [Header("Streak UI")]
     [SerializeField] private TextMeshProUGUI streakText;
     [SerializeField] private TextMeshProUGUI streakBonusText;
@@ -599,6 +600,24 @@ public class SpendRewardManager : MonoBehaviour
                 !rewardClaimed &&
                 !isClaimingReward;
         }
+
+        // =========================================
+        // 보상 상태에 따른 제목 변경
+        // =========================================
+        if (rewardTitleText != null)
+        {
+            if (pendingSettlement != null && !rewardClaimed)
+            {
+                // 지난주 확정된 보상을 아직 받지 않은 경우
+                rewardTitleText.text = "수령 가능한 보상";
+            }
+            else
+            {
+                // 지난주 보상을 수령했거나 미수령 정산이 없는 경우
+                rewardTitleText.text = "이번 주 예상 보상";
+            }
+        }
+
 
     }
 
