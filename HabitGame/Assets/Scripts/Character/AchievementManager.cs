@@ -7,6 +7,8 @@ using UnityEngine.UI;
 
 public class AchievementManager : MonoBehaviour
 {
+    [SerializeField]
+    private TitleManager titleManager;
     [Header("UI 연결")]
     [SerializeField]
     private Button achievementButton;
@@ -238,7 +240,7 @@ public class AchievementManager : MonoBehaviour
             isClaimingReward = true;
             string achId = data.AchievementSO.achievementId;
             AchievementRewardClaimResponse result = await backendManager.ClaimRewardAsync(achId);
-            if (result != null && result.IsClaimed)
+            if (result != null)
             {
                 // 대상 업적 상태 갱신
                 if (data.Response != null)
@@ -269,10 +271,11 @@ public class AchievementManager : MonoBehaviour
 
     private void OnCheckReward(AchievementViewData data)
     {
-        string titleName = data.AchievementSO.rewardTitle != null
-            ? data.AchievementSO.rewardTitle.displayName
-            : "없음";
-        Debug.Log($"[보상 확인 클릭] 이 업적의 보상 칭호: {titleName}");
-        // TODO: 칭호 정보 팝업 띄우기
+        if (data.AchievementSO.rewardTitle.displaySprite == null) return;
+
+        if (titleManager != null)
+        {
+            titleManager.ShowPreview(data.AchievementSO.rewardTitle.displaySprite);
+        }
     }
 }

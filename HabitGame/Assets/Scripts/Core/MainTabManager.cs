@@ -73,6 +73,7 @@ public class MainTabManager : SceneSingleton<MainTabManager>
         if (isChangingTap) return;
 
         isChangingTap = true;
+        SetTabButtonsInteractable(false);
 
         try
         {
@@ -95,6 +96,7 @@ public class MainTabManager : SceneSingleton<MainTabManager>
         finally
         {
             isChangingTap = false;
+            SetTabButtonsInteractable(true);
         }
     }
 
@@ -103,6 +105,7 @@ public class MainTabManager : SceneSingleton<MainTabManager>
         if (isChangingTap) return;
 
         isChangingTap = true;
+        SetTabButtonsInteractable(false);
 
         try
         {
@@ -123,6 +126,7 @@ public class MainTabManager : SceneSingleton<MainTabManager>
         finally
         {
             isChangingTap = false;
+            SetTabButtonsInteractable(true);
         }
     }
 
@@ -131,6 +135,7 @@ public class MainTabManager : SceneSingleton<MainTabManager>
         if (isChangingTap) return;
 
         isChangingTap = true;
+        SetTabButtonsInteractable(false);
 
         try
         {
@@ -151,6 +156,7 @@ public class MainTabManager : SceneSingleton<MainTabManager>
         finally
         {
             isChangingTap = false;
+            SetTabButtonsInteractable(true);
         }
     }
 
@@ -159,6 +165,7 @@ public class MainTabManager : SceneSingleton<MainTabManager>
         if (isChangingTap) return;
 
         isChangingTap = true;
+        SetTabButtonsInteractable(false);
 
         try
         {
@@ -166,12 +173,31 @@ public class MainTabManager : SceneSingleton<MainTabManager>
             CloseAllTaps();
             shopTap.SetActive(true);
         }
+        // 다중 에러 보따리가 날아온 경우 풀어헤치기
+        catch (AggregateException aggEx)
+        {
+            foreach (var inner in aggEx.Flatten().InnerExceptions)
+            {
+                if (inner is ApiException apiException)
+                {
+                    Debug.LogError(
+                        $"상점 정보 요청 실패 ({apiException.StatusCode}): " + apiException.Message
+                    );
+                }
+                else
+                {
+                    Debug.LogError($"상점 조회 실패: {inner.Message}");
+                }
+            }
+        }
+        // 단일 ApiException이 직접 날아올 경우 대비
         catch (ApiException exception)
         {
             Debug.LogError(
                 $"상점 정보 요청 실패 ({exception.StatusCode}): " + exception.Message
             );
         }
+        // 기타 알 수 없는 에러 대비
         catch (Exception exception)
         {
             Debug.LogError($"상점 조회 실패: {exception.Message}");
@@ -179,6 +205,7 @@ public class MainTabManager : SceneSingleton<MainTabManager>
         finally
         {
             isChangingTap = false;
+            SetTabButtonsInteractable(true);
         }
     }
 
@@ -187,6 +214,7 @@ public class MainTabManager : SceneSingleton<MainTabManager>
         if (isChangingTap) return;
 
         isChangingTap = true;
+        SetTabButtonsInteractable(false);
 
         try
         {
@@ -209,6 +237,16 @@ public class MainTabManager : SceneSingleton<MainTabManager>
         finally
         {
             isChangingTap = false;
+            SetTabButtonsInteractable(true);
         }
+    }
+
+    private void SetTabButtonsInteractable(bool interactable)
+    {
+        if (habitTapButton != null) habitTapButton.interactable = interactable;
+        if (characterTapButton != null) characterTapButton.interactable = interactable;
+        if (inventoryTapButton != null) inventoryTapButton.interactable = interactable;
+        if (shopTapButton != null) shopTapButton.interactable = interactable;
+        if (battleTapButton != null) battleTapButton.interactable = interactable;
     }
 }

@@ -7,6 +7,7 @@ using System.Threading.Tasks;   // Task ���� ���� �ʿ�
 using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.SceneManagement;
+using Cysharp.Threading.Tasks;
 
 public class ApiClient : Singleton<ApiClient>
 {
@@ -176,12 +177,27 @@ public class ApiClient : Singleton<ApiClient>
         // ���� ��� ���̱�
         ApplyHeaders(request, accessToken);
 
-        // ��û �߻�
-        UnityWebRequestAsyncOperation operation = request.SendWebRequest();
-        // ��û �� ���
-        while (!operation.isDone)
-            await Task.Yield();
+        try
+        {
+            await request.SendWebRequest();
+        }
+        catch (UnityWebRequestException)
+        {
+            string errorText = request.downloadHandler != null
+                ? request.downloadHandler.text
+                : string.Empty;
 
+            Debug.LogError(
+                $"[ApiClient] {method} {url} failed\n" +
+                $"Status: {request.responseCode}\nBody: {errorText}"
+            );
+
+            throw ApiException.FromResponse(
+                request.responseCode,
+                request.error,
+                errorText
+            );
+        }
         // ��û�� ���� ���� ������ (null�̸� �� ���ڿ�)
         string responseText = request.downloadHandler != null
             ? request.downloadHandler.text : string.Empty;
@@ -261,10 +277,27 @@ public class ApiClient : Singleton<ApiClient>
         if (!string.IsNullOrEmpty(accessToken))
             request.SetRequestHeader("Authorization", "Bearer " + accessToken);
 
-        UnityWebRequestAsyncOperation operation = request.SendWebRequest();
-        while (!operation.isDone)
-            await Task.Yield();
+        try
+        {
+            await request.SendWebRequest();
+        }
+        catch (UnityWebRequestException)
+        {
+            string errorText = request.downloadHandler != null
+                ? request.downloadHandler.text
+                : string.Empty;
 
+            Debug.LogError(
+                $"[ApiClient] POST (Multipart) {url} failed\n" +
+                $"Status: {request.responseCode}\nBody: {errorText}"
+            );
+
+            throw ApiException.FromResponse(
+                request.responseCode,
+                request.error,
+                errorText
+            );
+        }
         string responseText = request.downloadHandler != null
             ? request.downloadHandler.text : string.Empty;
 
