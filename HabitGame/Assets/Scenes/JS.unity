@@ -20946,6 +20946,11 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1163481348}
   m_CullTransparentMesh: 1
+--- !u!1 &1175564715 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 7619940542774742947, guid: 545caedeb10c82c40bb4f0cfefc436ff, type: 3}
+  m_PrefabInstance: {fileID: 4729249235596113407}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1176572591
 GameObject:
   m_ObjectHideFlags: 0
@@ -30341,7 +30346,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0.00080763886, y: 0.000063043444}
+  m_AnchoredPosition: {x: 0.00080763886, y: 0.00008922815}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1532577350
@@ -34003,6 +34008,7 @@ MonoBehaviour:
   probabilityButton: {fileID: 974589316}
   resultPopupManager: {fileID: 1800415513}
   probabilityPopup: {fileID: 560121997}
+  dim: {fileID: 1175564715}
   probabilityCloseButton: {fileID: 560121996}
   tier1Text: {fileID: 560121995}
   tier2Text: {fileID: 560121994}
@@ -42491,10 +42497,6 @@ PrefabInstance:
     - target: {fileID: 1199314102967710976, guid: 545caedeb10c82c40bb4f0cfefc436ff, type: 3}
       propertyPath: m_AnchoredPosition.y
       value: -50
-      objectReference: {fileID: 0}
-    - target: {fileID: 1350387302491930995, guid: 545caedeb10c82c40bb4f0cfefc436ff, type: 3}
-      propertyPath: m_IsActive
-      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1435002862876378875, guid: 545caedeb10c82c40bb4f0cfefc436ff, type: 3}
       propertyPath: m_IsActive
