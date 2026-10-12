@@ -7,10 +7,13 @@ using UnityEngine;
 using UnityEngine.UI;
 using System.Threading.Tasks;
 using System.Text;
+using LayerLab.ArtMakerUnity;
 
 
 public class InventoryManager : SceneSingleton<InventoryManager>
 {
+    [SerializeField]
+    private PartsManager characterPartsManager;
     [SerializeField]
     private InventoryBackendManager inventoryBackendManager;
 
@@ -104,6 +107,8 @@ public class InventoryManager : SceneSingleton<InventoryManager>
     // 테스트 데이터 사용 여부 체크
     [SerializeField]
     private bool useLocalTestInventory = false;
+    // 로컬 테스트 응답 데이터 캐시 (탭 이동 중 장착 상태 유지)
+    private List<InventoryItemResponse> localTestResponses;
 
     // 현재 보고있는 아이템 데이터 저장
     private InventoryItemViewData selectedItem;
@@ -137,6 +142,9 @@ public class InventoryManager : SceneSingleton<InventoryManager>
     protected override void Awake()
     {
         base.Awake();
+
+        // 캐릭터 파츠 매니저 초기화
+        characterPartsManager?.Init();
 
         equipButton.onClick.AddListener(ShowEquipmentItems);
         consumableButton.onClick.AddListener(ShowConsumableItems);
@@ -175,7 +183,12 @@ public class InventoryManager : SceneSingleton<InventoryManager>
 
         if (useLocalTestInventory)
         {
-            responses = CreateTestInventoryResponses();
+            // 로컬 테스트 시 최초 1회만 생성하여 장착 상태 유지
+            if (localTestResponses == null)
+            {
+                localTestResponses = CreateTestInventoryResponses();
+            }
+            responses = localTestResponses;
         }
         else
         {
@@ -183,6 +196,7 @@ public class InventoryManager : SceneSingleton<InventoryManager>
         }
 
         BuildViewData(responses);
+        InitCharacterAppearance();
     }
 
     // --------------------------------- 테스트 데이터 생성 -----------------------------------------
@@ -225,7 +239,17 @@ public class InventoryManager : SceneSingleton<InventoryManager>
 
         foreach (InventoryItemResponse response in responses)
         {
-            ItemDataSO itemSO = SORegistry.Instance.GetItem(response.ItemId);
+            ItemDataSO itemSO = null;
+            if (SORegistry.Instance != null)
+            {
+                itemSO = SORegistry.Instance.GetItem(response.ItemId);
+            }
+
+            // 로컬 테스트 시 등록소에 없는 아이템은 testItems에서 보완 매칭
+            if (itemSO == null && useLocalTestInventory && testItems != null)
+            {
+                itemSO = testItems.Find(item => item != null && (string.IsNullOrEmpty(item.itemId) ? item.name : item.itemId) == response.ItemId);
+            }
 
             InventoryItemViewData viewData = new InventoryItemViewData { Response = response, ItemSO = itemSO };
 
@@ -332,6 +356,20 @@ public class InventoryManager : SceneSingleton<InventoryManager>
         }
 
         selectedItem = viewData;
+    }
+
+    // 인벤토리 첫 로드 시 현재 장착된 아이템들을 1회 일괄 복원
+    public void InitCharacterAppearance()
+    {
+        if (characterPartsManager == null) return;
+
+        foreach (var item in equipmentItems)
+        {
+            if (item.Response.IsEquipped && item.ItemSO is EquipmentDataSO equipSO)
+            {
+                characterPartsManager.EquipParts(equipSO.partsType, equipSO.PartsIndex);
+            }
+        }
     }
 
     // ---------------------------------- detail popup ---------------------------------
@@ -499,6 +537,7 @@ public class InventoryManager : SceneSingleton<InventoryManager>
 
             Debug.Log($"{selectedEquipment.displayName} 장착");
 
+            characterPartsManager?.EquipParts(selectedEquipment.partsType, selectedEquipment.PartsIndex);
 
             ClosePopup();
             ShowEquipmentItems();
@@ -536,6 +575,8 @@ public class InventoryManager : SceneSingleton<InventoryManager>
             await UnequipInventoryItemAsync(id);
 
             Debug.Log($"{selectedEquipment.displayName} 장착 해제");
+
+            characterPartsManager?.UnequipParts(selectedEquipment.partsType);
 
             ClosePopup();
             ShowEquipmentItems();
