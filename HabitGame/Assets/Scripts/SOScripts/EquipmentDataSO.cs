@@ -1,7 +1,13 @@
+using LayerLab.ArtMakerUnity;
+using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
+using System.IO;
 using UnityEngine;
+
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 public enum EquipmentType
 {
@@ -17,7 +23,13 @@ public class EquipmentDataSO : ItemDataSO
     public StatBonus[] statBonuses;
 
     public const int MaxLevel = 10;
-    
+
+    [Header("에셋 연동 데이터")]
+    public PartsType partsType; // Helmet, Chest, Sword 등
+    [SerializeField]
+    private int partsIndex; // 에셋의 스프라이트 번호 (0, 1, 2...)
+    public int PartsIndex => partsIndex;
+
     // ---------------------- 티어 치환 프로퍼티 ------------------------
     // 아이템 해금 조건 레벨에 따라 티어 결정
     public int Tier => unlockCondition.requiredAttributeLevel switch
@@ -62,9 +74,48 @@ public class EquipmentDataSO : ItemDataSO
         public AttributeType attributeType;
         public float attributeDamageBonus;*/
 
-    // ItemType 항상 Equipment로 유지
+#if UNITY_EDITOR
     private void OnValidate()
     {
+        // ItemType 항상 Equipment로 유지
         itemType = ItemType.Equipment;
+        // 아이콘이 등록되었을 때 자동으로 인덱스 역추적
+        if (icon != null)
+        {
+            AutoMatchPartsIndex();
+        }
     }
+    private void AutoMatchPartsIndex()
+    {
+        if (icon == null) return;
+        string assetPath = AssetDatabase.GetAssetPath(icon);
+        if (string.IsNullOrEmpty(assetPath)) return;
+        string folderPath = Path.GetDirectoryName(assetPath);
+        string fileName = Path.GetFileName(assetPath);
+        // 폴더 이름을 가져와서 partsType 자동 매칭
+        // 예: ".../Thumbnail/Sword" -> "Sword"
+        string folderName = new DirectoryInfo(folderPath).Name;
+
+        // "Sub_Item" 폴더의 경우 언더바(_) 제거 처리
+        if (folderName.Equals("Sub_Item", StringComparison.OrdinalIgnoreCase))
+            folderName = "SubItem";
+        // 폴더 이름과 똑같은 PartsType Enum으로 자동 변환
+        if (Enum.TryParse<PartsType>(folderName, true, out var matchedType))
+        {
+            partsType = matchedType;
+        }
+        // --- 기존 파일 순서(인덱스) 계산 로직 유지 ---
+        string[] files = Directory.GetFiles(folderPath, "*.png");
+        Array.Sort(files);
+        for (int i = 0; i < files.Length; i++)
+        {
+            if (Path.GetFileName(files[i]) == fileName)
+            {
+                partsIndex = i;
+                EditorUtility.SetDirty(this);
+                break;
+            }
+        }
+    }
+#endif
 }

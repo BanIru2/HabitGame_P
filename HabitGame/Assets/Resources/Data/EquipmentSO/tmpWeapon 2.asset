@@ -14,10 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   itemType: 0
   itemId: 6
-  displayName: "\uC784\uC2DC3"
-  description: "\uBB34\uAE30\uC784\uC2DC2"
+  displayName: "\uC784\uC2DC\uBB34\uAE302(\uB098\uBB34\uCC3D)"
+  description: "\uB098\uBB34\uB85C \uB9CC\uB4E0 \uCC3D\uC774\uB77C\uB2C8"
   cost: 50000
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 31d8e19ab3fc145cc8113092847f9ca0, type: 3}
   unlockCondition:
     requiredAttributeLevel: 0
     requiredAttribute: 0
@@ -27,3 +27,5 @@ MonoBehaviour:
   statBonuses:
   - statType: 1
     value: 10
+  partsType: 11
+  partsIndex: 0
