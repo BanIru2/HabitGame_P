@@ -145,9 +145,9 @@ public class BattleUIManager : SceneSingleton<BattleUIManager>
     [SerializeField]
     private TextMeshProUGUI oppHpText;
     [SerializeField]
-    private Image myCharacterImage;
+    private RawImage myCharacterImage;
     [SerializeField]
-    private Image oppCharacterImage;
+    private RawImage oppCharacterImage;
     [SerializeField]
     private TextMeshProUGUI turnCountText;
 
