@@ -144,7 +144,7 @@ public class InventoryManager : SceneSingleton<InventoryManager>
         base.Awake();
 
         // 캐릭터 파츠 매니저 초기화
-        characterPartsManager?.Init();
+        EquipmentAppearanceSynchronizer.InitializeGameCharacter(characterPartsManager);
 
         equipButton.onClick.AddListener(ShowEquipmentItems);
         consumableButton.onClick.AddListener(ShowConsumableItems);
@@ -196,7 +196,7 @@ public class InventoryManager : SceneSingleton<InventoryManager>
         }
 
         BuildViewData(responses);
-        InitCharacterAppearance();
+        SyncCharacterEquipmentAppearance();
     }
 
     // --------------------------------- 테스트 데이터 생성 -----------------------------------------
@@ -358,18 +358,16 @@ public class InventoryManager : SceneSingleton<InventoryManager>
         selectedItem = viewData;
     }
 
-    // 인벤토리 첫 로드 시 현재 장착된 아이템들을 1회 일괄 복원
-    public void InitCharacterAppearance()
+    // 현재 인벤토리의 장착 상태를 캐릭터 장비 외형에 동기화
+    private void SyncCharacterEquipmentAppearance()
     {
-        if (characterPartsManager == null) return;
+        if (characterPartsManager == null)
+            return;
 
-        foreach (var item in equipmentItems)
-        {
-            if (item.Response.IsEquipped && item.ItemSO is EquipmentDataSO equipSO)
-            {
-                characterPartsManager.EquipParts(equipSO.partsType, equipSO.PartsIndex);
-            }
-        }
+        EquipmentAppearanceSynchronizer.Sync(
+            characterPartsManager,
+            BuildEquippedPartsMap()
+        );
     }
 
     // ---------------------------------- detail popup ---------------------------------
@@ -468,7 +466,7 @@ public class InventoryManager : SceneSingleton<InventoryManager>
         targetItem.Response.IsEquipped = shouldEquip;
     }
 
-    private async Task SetEquipmentEquippedStateAsync(long id, bool shouldEquip)
+    private async Task SetEquipmentEquippedStateAsync(long inventoryId,  bool shouldEquip)
     {
         if (IsEquipmentChangeInProgress)
         {
@@ -478,28 +476,28 @@ public class InventoryManager : SceneSingleton<InventoryManager>
 
         IsEquipmentChangeInProgress = true;
 
-        List<InventoryItemResponse> updatedInventory;
-
         try
         {
-            // 서버 안 타고 로컬 테스트 데이터의 IsEquipped만 바꾸기
             if (useLocalTestInventory)
             {
-                SetLocalTestEquippedState(id, shouldEquip);
-                return;
-            }
-
-            if (shouldEquip)
-            {
-                updatedInventory = await inventoryBackendManager.EquipItemAsync(id);
+                SetLocalTestEquippedState(inventoryId, shouldEquip);
             }
             else
             {
-                updatedInventory = await inventoryBackendManager.UnequipItemAsync(id);
+                List<InventoryItemResponse> updatedInventory =
+                    shouldEquip
+                        ? await inventoryBackendManager.EquipItemAsync(inventoryId)
+                        : await inventoryBackendManager.UnequipItemAsync(inventoryId);
+
+                BuildViewData(updatedInventory);
             }
 
-            BuildViewData(updatedInventory);
-            await CharacterManager.Instance.RefreshCharacterAsync();
+            SyncCharacterEquipmentAppearance();
+
+            if (!useLocalTestInventory)
+            {
+                await CharacterManager.Instance.RefreshCharacterAsync();
+            }
         }
         finally
         {
@@ -537,8 +535,6 @@ public class InventoryManager : SceneSingleton<InventoryManager>
 
             Debug.Log($"{selectedEquipment.displayName} 장착");
 
-            characterPartsManager?.EquipParts(selectedEquipment.partsType, selectedEquipment.PartsIndex);
-
             ClosePopup();
             ShowEquipmentItems();
         }
@@ -575,8 +571,6 @@ public class InventoryManager : SceneSingleton<InventoryManager>
             await UnequipInventoryItemAsync(id);
 
             Debug.Log($"{selectedEquipment.displayName} 장착 해제");
-
-            characterPartsManager?.UnequipParts(selectedEquipment.partsType);
 
             ClosePopup();
             ShowEquipmentItems();
@@ -643,6 +637,38 @@ public class InventoryManager : SceneSingleton<InventoryManager>
         }
     }
 
+    private Dictionary<PartsType, int> BuildEquippedPartsMap()
+    {
+        Dictionary<PartsType, int> result = new();
+
+        foreach (InventoryItemViewData item in equipmentItems)
+        {
+            if (!item.Response.IsEquipped)
+                continue;
+
+            if (item.ItemSO is not EquipmentDataSO equipment)
+                continue;
+
+            result[equipment.partsType] = equipment.PartsIndex;
+        }
+
+        return result;
+    }
+
+    // 현재 장착된 모든 장비의 [PartsType, PartsIndex, ...] 배열 반환
+    public int[] GetEquippedPartsData()
+    {
+        Dictionary<PartsType, int> equippedParts = BuildEquippedPartsMap();
+        List<int> result = new(equippedParts.Count * 2);
+
+        foreach (var pair in equippedParts)
+        {
+            result.Add((int)pair.Key);
+            result.Add(pair.Value);
+        }
+
+        return result.ToArray();
+    }
 
     // ---------------------------- PVP 준비 단계와 교환 -------------------------------------
     // PvP 준비단계에서 각 부위에 해당하는 보유 장비 리스트를 보내주기 위한 함수

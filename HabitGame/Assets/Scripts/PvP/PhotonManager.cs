@@ -1,15 +1,20 @@
 using ExitGames.Client.Photon;
+using LayerLab.ArtMakerUnity;
 using Photon.Pun;
 using Photon.Realtime;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Unity.VisualScripting;
 using UnityEngine;
-using System.Threading.Tasks;
 using Hashtable = ExitGames.Client.Photon.Hashtable;
+using Player = Photon.Realtime.Player;
 
 public class PhotonManager : MonoBehaviourPunCallbacks
 {
+    [Header("상대 캐릭터 외형")]
+    [SerializeField] private PartsManager oppPartsManager; // 씬의 OpponentCharacter
+
     private const string GameVersion = "0.1";
     private const string FixedRegion = "asia";
 
@@ -34,6 +39,10 @@ public class PhotonManager : MonoBehaviourPunCallbacks
     private const string PropBattleAttr = "BattleAttr";
     private const string PropBattleAttrLevel = "BattleAttrLevel";
 
+    // 장착 파츠 상대방 전달 위한 정보 등록용 키
+    private const string PropEquippedParts = "EquippedParts";
+
+
     private bool isPreparingBattleUnit;
     private bool isBattleStartRequested;
     private int roomFlowVersion;
@@ -43,6 +52,8 @@ public class PhotonManager : MonoBehaviourPunCallbacks
     private void Awake()
     {
         titleManager = FindAnyObjectByType<TitleManager>();
+
+        EquipmentAppearanceSynchronizer.InitializeGameCharacter(oppPartsManager);
     }
 
     private void Start()
@@ -133,6 +144,9 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         myProps.Add(PropHp, data != null ? (int)data.Hp : 0);
         myProps.Add(PropIsReady, false);
         myProps.Add(PropTitleId, myTitleId ?? "");
+
+        int[] myParts = InventoryManager.Instance != null ? InventoryManager.Instance.GetEquippedPartsData() : null;
+        myProps.Add(PropEquippedParts, myParts ?? new int[0]);
 
         PhotonNetwork.LocalPlayer.SetCustomProperties(myProps);
         Debug.Log("Local player properties registered.");
@@ -405,8 +419,52 @@ public class PhotonManager : MonoBehaviourPunCallbacks
             Sprite oppTitleSprite = (titleManager != null && !string.IsNullOrEmpty(oppTitleId)) ? titleManager.GetTitleSprite(oppTitleId) : null;
             BattleUIManager.Instance.SetTitle(false, oppTitleSprite);
 
+            // 장비 장착 상태
+            if (oppPartsManager != null && cp.TryGetValue(PropEquippedParts, out object data) && TryParseEquippedParts(data, out var equippedParts))
+            {
+                EquipmentAppearanceSynchronizer.Sync(oppPartsManager, equippedParts);
+            }
+
             return;
         }
+    }
+
+    private bool TryParseEquippedParts(
+    object data,
+    out Dictionary<PartsType, int> equippedParts)
+    {
+        equippedParts = new Dictionary<PartsType, int>();
+
+        if (data is not int[] values)
+            return false;
+
+        if (values.Length % 2 != 0)
+        {
+            Debug.LogWarning($"잘못된 장비 파츠 데이터 길이입니다: {values.Length}");
+            return false;
+        }
+
+        for (int i = 0; i < values.Length; i += 2)
+        {
+            int typeValue = values[i];
+            int index = values[i + 1];
+
+            if (!System.Enum.IsDefined(typeof(PartsType), typeValue))
+            {
+                Debug.LogWarning($"알 수 없는 PartsType 값입니다: {typeValue}");
+                return false;
+            }
+
+            PartsType type = (PartsType)typeValue;
+
+            if (!equippedParts.TryAdd(type, index))
+            {
+                Debug.LogWarning($"중복된 장비 파츠 데이터입니다: {type}");
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public override void OnLeftRoom()
@@ -461,6 +519,10 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         props.Add(PropBattleCrit, unit.crtk);
         props.Add(PropBattleAttr, (int)unit.attribute);
         props.Add(PropBattleAttrLevel, unit.attributeLevel);
+
+        int[] equippedParts = InventoryManager.Instance != null ? InventoryManager.Instance.GetEquippedPartsData() : System.Array.Empty<int>();
+
+        props.Add(PropEquippedParts, equippedParts);
 
         PhotonNetwork.LocalPlayer.SetCustomProperties(props);
 
