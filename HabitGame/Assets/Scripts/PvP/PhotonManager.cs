@@ -132,7 +132,7 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         long userId = data != null ? data.UserId : PhotonNetwork.LocalPlayer.ActorNumber;
         string playerName = GetLocalPlayerName(userId);
 
-        string myTitleId = titleManager != null ? titleManager.EquippedTitleId : "";
+        string myTitleId = data?.EquippedTitleId ?? "";
 
         Hashtable myProps = new Hashtable();
         myProps.Add(PropUserId, userId);
@@ -143,7 +143,7 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         myProps.Add(PropAuroraLv, data != null ? data.AuroraLv : 0);
         myProps.Add(PropHp, data != null ? (int)data.Hp : 0);
         myProps.Add(PropIsReady, false);
-        myProps.Add(PropTitleId, myTitleId ?? "");
+        myProps.Add(PropTitleId, myTitleId);
 
         int[] myParts = InventoryManager.Instance != null ? InventoryManager.Instance.GetEquippedPartsData() : null;
         myProps.Add(PropEquippedParts, myParts ?? new int[0]);
@@ -392,7 +392,8 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         BattleUIManager.Instance.SetMyInfoUI(name);
 
         // ÄªÈ£ Ãß°¡
-        Sprite myTitleSprite = titleManager != null ? titleManager.GetEquippedTitleSprite() : null;
+        string myTitleId = props.TryGetValue(PropTitleId, out object titleValue) ? titleValue?.ToString() : null;
+        Sprite myTitleSprite = titleManager != null ? titleManager.GetTitleSprite(myTitleId) : null;
         BattleUIManager.Instance.SetTitle(true, myTitleSprite);
     }
 
