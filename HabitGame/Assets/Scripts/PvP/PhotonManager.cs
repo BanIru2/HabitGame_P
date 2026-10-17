@@ -42,6 +42,7 @@ public class PhotonManager : MonoBehaviourPunCallbacks
     // 장착 파츠 상대방 전달 위한 정보 등록용 키
     private const string PropEquippedParts = "EquippedParts";
 
+    private bool isLeavingRoom;
 
     private bool isPreparingBattleUnit;
     private bool isBattleStartRequested;
@@ -95,6 +96,8 @@ public class PhotonManager : MonoBehaviourPunCallbacks
 
     public override async void OnJoinedRoom()
     {
+        isLeavingRoom = false;
+
         int flowVersion = ++roomFlowVersion;
         Debug.Log($"Joined room. Name: {PhotonNetwork.CurrentRoom.Name}, Players: {PhotonNetwork.CurrentRoom.PlayerCount}/{PhotonNetwork.CurrentRoom.MaxPlayers}, Region: {PhotonNetwork.CloudRegion}");
         UpdateUI();
@@ -185,7 +188,8 @@ public class PhotonManager : MonoBehaviourPunCallbacks
 
     public bool IsCurrentRoomFlow(int flowVersion)
     {
-        return flowVersion == roomFlowVersion
+        return !isLeavingRoom
+            && flowVersion == roomFlowVersion
             && PhotonNetwork.InRoom
             && PhotonNetwork.LocalPlayer != null;
     }
@@ -217,12 +221,14 @@ public class PhotonManager : MonoBehaviourPunCallbacks
 
     private async void CheckAllPlayersReady()
     {
+        if (!CanPrepareBattle()) return;
         if (!AreAllPlayersReady()) return;
-        if (!PhotonNetwork.InRoom || PhotonNetwork.LocalPlayer == null) return;
+
+        if (isPreparingBattleUnit) return;
 
         int flowVersion = roomFlowVersion;
 
-        if (!HasRequiredBattleUnitData(PhotonNetwork.LocalPlayer) && !isPreparingBattleUnit)
+        if (!HasRequiredBattleUnitData(PhotonNetwork.LocalPlayer))
         {
             isPreparingBattleUnit = true;
 
@@ -231,47 +237,44 @@ public class PhotonManager : MonoBehaviourPunCallbacks
                 bool prepared = await BattleUIManager.Instance.PrepareLocalBattleUnitAfterReadyConfirmedAsync(flowVersion);
 
                 if (!IsCurrentRoomFlow(flowVersion)) return;
+                if (!CanPrepareBattle()) return;
 
                 if (!prepared)
                 {
                     Debug.LogWarning("전투 유닛 준비 실패");
+
                     ResetBattlePreparationState();
-                    if (!IsCurrentRoomFlow(flowVersion)) return;
 
                     BattleManager.Instance.SendReadyState(false);
-
-                    PhotonNetwork.LocalPlayer.SetCustomProperties(
-                        new Hashtable { { PropIsReady, false } }
-                    );
-
                     BattleUIManager.Instance.ResetReadyUIAfterPreparationFailure();
+
                     return;
                 }
             }
             finally
             {
-                isPreparingBattleUnit = false;
+                if (flowVersion == roomFlowVersion)
+                    isPreparingBattleUnit = false;
             }
         }
 
         if (!IsCurrentRoomFlow(flowVersion)) return;
+        if (!CanPrepareBattle()) return;
+        if (!AreAllPlayersReady()) return;
+        if (!HasAllPlayersBattleUnitData()) return;
+        if (!PhotonNetwork.IsMasterClient) return;
 
-        if (PhotonNetwork.IsMasterClient && AreAllPlayersReady() && HasAllPlayersBattleUnitData() && !isBattleStartRequested)
-        {
-            isBattleStartRequested = true;
-            BattleManager.Instance.BroadcastStartBattle();
-        }
+        isBattleStartRequested = true;
+        BattleManager.Instance.BroadcastStartBattle();
     }
 
     private bool AreAllPlayersReady()
     {
-        foreach (Player p in PhotonNetwork.PlayerList)
+        if (!HasTwoBattlePlayers()) return false;
+
+        foreach (Player player in PhotonNetwork.PlayerList)
         {
-            if (p.CustomProperties.TryGetValue(PropIsReady, out object isReady))
-            {
-                if (!(bool)isReady) return false;
-            }
-            else
+            if (!player.CustomProperties.TryGetValue(PropIsReady, out object value) || value is not bool ready || !ready)
             {
                 return false;
             }
@@ -282,9 +285,12 @@ public class PhotonManager : MonoBehaviourPunCallbacks
 
     private bool HasAllPlayersBattleUnitData()
     {
-        foreach (Player p in PhotonNetwork.PlayerList)
+        if (!HasTwoBattlePlayers()) return false;
+
+        foreach (Player player in PhotonNetwork.PlayerList)
         {
-            if (!HasRequiredBattleUnitData(p)) return false;
+            if (!HasRequiredBattleUnitData(player))
+                return false;
         }
 
         return true;
@@ -292,19 +298,22 @@ public class PhotonManager : MonoBehaviourPunCallbacks
 
     private void ClearLocalBattleUnitProperties()
     {
-        if (!PhotonNetwork.InRoom || PhotonNetwork.LocalPlayer == null) return;
+        if (!PhotonNetwork.InRoom || PhotonNetwork.LocalPlayer == null)
+            return;
 
         Hashtable props = new Hashtable
-    {
-        { PropBattleMaxHp, null },
-        { PropBattleHp, null },
-        { PropBattleAtk, null },
-        { PropBattleDef, null },
-        { PropBattleSpd, null },
-        { PropBattleCrit, null },
-        { PropBattleAttr, null },
-        { PropBattleAttrLevel, null }
-    };
+        {
+            { PropIsReady, false },
+
+            { PropBattleMaxHp, null },
+            { PropBattleHp, null },
+            { PropBattleAtk, null },
+            { PropBattleDef, null },
+            { PropBattleSpd, null },
+            { PropBattleCrit, null },
+            { PropBattleAttr, null },
+            { PropBattleAttrLevel, null }
+        };
 
         PhotonNetwork.LocalPlayer.SetCustomProperties(props);
     }
@@ -319,6 +328,7 @@ public class PhotonManager : MonoBehaviourPunCallbacks
 
     private void ScheduleReadyPanelCheck()
     {
+        if (!CanPrepareBattle()) return;
         if (!PhotonNetwork.InRoom || PhotonNetwork.CurrentRoom.PlayerCount != 2) return;
         if (!BattleUIManager.Instance.IsMatching) return;
 
@@ -328,6 +338,7 @@ public class PhotonManager : MonoBehaviourPunCallbacks
 
     private void TryGoToReadyPanel()
     {
+        if (!CanPrepareBattle()) return;
         if (!PhotonNetwork.InRoom || PhotonNetwork.CurrentRoom.PlayerCount != 2) return;
         if (!BattleUIManager.Instance.IsMatching) return;
 
@@ -471,6 +482,9 @@ public class PhotonManager : MonoBehaviourPunCallbacks
     public override void OnLeftRoom()
     {
         base.OnLeftRoom();
+
+        isLeavingRoom = true;
+
         roomFlowVersion++;
         ResetBattlePreparationState();
         CancelInvoke(nameof(TryGoToReadyPanel));
@@ -491,16 +505,15 @@ public class PhotonManager : MonoBehaviourPunCallbacks
             return;
         }
 
-        Hashtable props = new Hashtable();
-        props.Add(PropIsReady, false);
-        PhotonNetwork.LocalPlayer.SetCustomProperties(props);
-
         UpdateUI();
         BattleUIManager.Instance.BackToMatchingAfterOpponentLeft();
     }
 
+
     public void PrepareBattlePanelUI(BattleUnit myUnit, BattleUnit oppUnit)
     {
+        isBattleStartRequested = true;
+
         RefreshMyInfoUI();
         RefreshOpponentInfoUI();
         BattleUIManager.Instance.SetBattleHpUI(myUnit.maxHp, oppUnit.maxHp);
@@ -602,8 +615,29 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         return true;
     }
 
+    private bool HasTwoBattlePlayers()
+    {
+        return !isLeavingRoom
+            && PhotonNetwork.InRoom
+            && PhotonNetwork.CurrentRoom != null
+            && PhotonNetwork.LocalPlayer != null
+            && PhotonNetwork.CurrentRoom.PlayerCount == 2
+            && PhotonNetwork.PlayerList.Length == 2;
+    }
+
+    private bool CanPrepareBattle()
+    {
+        return HasTwoBattlePlayers()
+            && !isBattleStartRequested
+            && !BattleManager.Instance.IsBattleFinished;
+    }
+
     public void ReturnToLobby()
     {
+        if (isLeavingRoom) return;
+
+        isLeavingRoom = true;
+
         BattleManager.Instance.CancelBattle();
 
         roomFlowVersion++;
