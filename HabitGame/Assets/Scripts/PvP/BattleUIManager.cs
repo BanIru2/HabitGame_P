@@ -123,6 +123,16 @@ public class BattleUIManager : SceneSingleton<BattleUIManager>
 
     private InventoryItemViewData selectedEquipItem;    // 현재 선택된 장비 아이템 저장
 
+    [Header("Battle Result Waiting")]
+    [SerializeField] private GameObject resultWaitingPanel;
+    [SerializeField] private TextMeshProUGUI resultWaitingText;
+    [SerializeField] private UnityEngine.UI.Button resultWaitingCloseButton;
+
+    private string activeBattleId;
+    private BattleResultResponse savedResultResponse;
+    private bool replayFinished;
+    private bool resultDisplayed;
+    private bool resultRequestFailed;
 
     // Battle Panel
     [Header("Battle Panel")]
@@ -134,8 +144,6 @@ public class BattleUIManager : SceneSingleton<BattleUIManager>
     private Image myBattleTitleImage;
     [SerializeField]
     private Image oppBattleTitleImage;
-    [SerializeField]
-    private TextMeshProUGUI timerText;
     [SerializeField]
     private Image myHpBar;
     [SerializeField]
@@ -166,11 +174,6 @@ public class BattleUIManager : SceneSingleton<BattleUIManager>
     private TextMeshProUGUI resultRankingPointText;
     [SerializeField]
     private Button checkButton;
-
-    private bool isBattle = false;    // UI 타이머 표시 진행을 위한 플래그
-    private float remainTime;
-    private int remainTimeForDisplay;
-    private double battleEndTime;
 
     [SerializeField]
     private RankingboardManager rankingboardManager;
@@ -210,28 +213,16 @@ public class BattleUIManager : SceneSingleton<BattleUIManager>
 
         equipActionButton.onClick.AddListener(OnEquipButtonClicked);
         equipDetailCloseButton.onClick.AddListener(CloseEquipDetailPopup);
+
+        resultWaitingCloseButton.onClick.AddListener(OnClickCheckButton);
+
+        ResetBattleResultState();
     }
 
     private void Update()
     {
-        // 매칭 중 중앙 스피너 돌리기
         if (isMatching)
-        {
             loadingSpinner.Rotate(0, 0, -spinSpeed * Time.deltaTime);
-        }
-
-        // 타이머 작동
-        if (isBattle)
-        {
-            remainTime = Mathf.Max(0f, (float)(battleEndTime - PhotonNetwork.Time));
-            UpdateTimerText();
-
-            if (remainTime <= 0f)
-            {
-                isBattle = false;
-                TimeOver();
-            }
-        }
     }
 
     // -----------------------------Lobby Panel-----------------------------------
@@ -304,11 +295,11 @@ public class BattleUIManager : SceneSingleton<BattleUIManager>
 
     //-------------------------------Ready Panel-----------------------------------
     // 준비 단계 완료 시(양 측 다 준비 완료 or 준비 시간 끝) 화면 전환
-    public void ReadyComplete(double endTime)
+    public void ReadyComplete(string receivedBattleId)
     {
         readyPanel.SetActive(false);
         battlePanel.SetActive(true);
-        InitBattleUI(endTime);
+        InitBattleUI(receivedBattleId);
     }
 
     private void ResetReadyUI()
@@ -812,26 +803,23 @@ public class BattleUIManager : SceneSingleton<BattleUIManager>
     //------------------------------Battle Panel-------------------------------
     // UI 초기화에 필요한 기능 추가할 것
     // 전투 시작 전 호출되어야 함
-    public void InitBattleUI(double endTime)
+    public void InitBattleUI(string receivedBattleId)
     {
-        battleEndTime = endTime;
-        isBattle = true;
-        remainTime = Mathf.Max(0f, (float)(battleEndTime - PhotonNetwork.Time));
-        remainTimeForDisplay = -1;
+        ResetBattleResultState();
+        activeBattleId = receivedBattleId;
+
         InitCharacterHp();
-        UpdateTimerText();
         InitResultImage();
         InitRankingPointText();
+        UpdateTurnText(1);
     }
 
     // 각 플레이어 이름 정보 받아와서 출력하기
     // 각 플레이어 유닛 정보를 앞전에 미리 받아온다면 private으로 받고 InitBattleUI에서 호출 가능
     public void UpdateTurnText(int turn)
     {
-        if(turnCountText != null)
-        {
-            turnCountText.text = turn.ToString();
-        }
+        if (turnCountText != null)
+            turnCountText.text = $"{turn}턴";
     }
 
     public void GetName(string myNameSTr, string oppNameStr)
@@ -889,19 +877,6 @@ public class BattleUIManager : SceneSingleton<BattleUIManager>
         InitCharacterHp();
     }
 
-    private void UpdateTimerText()
-    {
-        int currentSecond = Mathf.CeilToInt(remainTime);
-
-        if(currentSecond != remainTimeForDisplay)
-        {
-            timerText.text = $"{currentSecond}";
-            remainTimeForDisplay = currentSecond;
-
-            timerText.color = (currentSecond <= 10) ? Color.red : Color.black;
-        }
-    }
-
     // 칭호 세팅
     public void SetTitle(bool isMine, Sprite sprite)
     {
@@ -915,17 +890,82 @@ public class BattleUIManager : SceneSingleton<BattleUIManager>
     // ------------------------- Battle Finish ----------------------------
     public void FinishBattle(BattleResultResponse response)
     {
-        isBattle = false;
+        if (response == null || response.Status != "CONFIRMED") return;
+        if (activeBattleId == null || response.BattleId != activeBattleId) return;
+
+        savedResultResponse = response;
+        resultRequestFailed = false;
+        TryShowBattleResult();
+    }
+
+    public void OnReplayFinished(string finishedBattleId)
+    {
+        if (activeBattleId == null || finishedBattleId != activeBattleId) return;
+
+        replayFinished = true;
+
+        if (savedResultResponse == null)
+            ShowResultWaiting();
+
+        TryShowBattleResult();
+    }
+
+    private void TryShowBattleResult()
+    {
+        if (!replayFinished || savedResultResponse == null || resultDisplayed)
+            return;
+
+        resultDisplayed = true;
+        HideResultWaiting();
 
         InitResultImage();
-        PrintResultImage(response.Result);
-        SetRankingPointText(response);
+        PrintResultImage(savedResultResponse.Result);
+        SetRankingPointText(savedResultResponse);
         resultPanel.SetActive(true);
     }
 
-    private void TimeOver()
+    private void ShowResultWaiting()
     {
-        BattleManager.Instance.TreatTimeOver();
+        if (resultWaitingText != null)
+        {
+            resultWaitingText.text = resultRequestFailed ? "전투 결과를 확인하지 못했습니다. 로비로 돌아가 주세요." : "전투 결과 확인 중…";
+        }
+
+        if (resultWaitingCloseButton != null)
+            resultWaitingCloseButton.gameObject.SetActive(resultRequestFailed);
+
+        if (resultWaitingPanel != null)
+        {
+            resultWaitingPanel.transform.SetAsLastSibling();
+            resultWaitingPanel.SetActive(true);
+        }
+    }
+
+    private void HideResultWaiting()
+    {
+        if (resultWaitingPanel != null)
+            resultWaitingPanel.SetActive(false);
+    }
+
+    public void NotifyBattleResultRequestFailed(string failedBattleId)
+    {
+        if (activeBattleId == null || failedBattleId != activeBattleId) return;
+        if (savedResultResponse != null || resultDisplayed) return;
+
+        resultRequestFailed = true;
+
+        if (replayFinished)
+            ShowResultWaiting();
+    }
+
+    private void ResetBattleResultState()
+    {
+        activeBattleId = null;
+        savedResultResponse = null;
+        replayFinished = false;
+        resultDisplayed = false;
+        resultRequestFailed = false;
+        HideResultWaiting();
     }
 
     private void OnClickCheckButton()
@@ -943,6 +983,10 @@ public class BattleUIManager : SceneSingleton<BattleUIManager>
     // 전투 종료 후 / 매칭 캔슬
     public async void ReturnToLobby()
     {
+        BattleManager.Instance.CancelBattle();
+
+        ResetBattleResultState();
+
         battlePanel.SetActive(false);
         readyPanel.SetActive(false);
         loadingPanel.SetActive(false);
@@ -950,7 +994,6 @@ public class BattleUIManager : SceneSingleton<BattleUIManager>
         tapBar.SetActive(true);
 
         isMatching = false;
-        isBattle = false;
 
         UpdatePlayerCount(0);
         ResetReadyUI();
@@ -988,12 +1031,7 @@ public class BattleUIManager : SceneSingleton<BattleUIManager>
         InitRankingPointText();
         InitCharacterHp();
 
-        turnCountText.text = "0";
-        timerText.text = "60";
-        timerText.color = Color.black;
-
-        remainTime = 0f;
-        remainTimeForDisplay = -1;
+        UpdateTurnText(0);
     }
 
     private void PrintResultImage(string result)

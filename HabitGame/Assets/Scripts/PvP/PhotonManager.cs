@@ -604,6 +604,8 @@ public class PhotonManager : MonoBehaviourPunCallbacks
 
     public void ReturnToLobby()
     {
+        BattleManager.Instance.CancelBattle();
+
         roomFlowVersion++;
         CancelInvoke(nameof(TryGoToReadyPanel));
         ResetBattlePreparationState();
