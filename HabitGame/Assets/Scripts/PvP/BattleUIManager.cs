@@ -390,7 +390,8 @@ public class BattleUIManager : SceneSingleton<BattleUIManager>
     }
 
     // 사용할 소비 아이템 선택 버튼 클릭 시 동작
-    private void OnClickConsumableItemButton(Button clickedButton)
+    private void OnClickConsumableItemButton(
+    UnityEngine.UI.Button clickedButton)
     {
         if (isReady)
         {
@@ -406,6 +407,19 @@ public class BattleUIManager : SceneSingleton<BattleUIManager>
             return;
         }
 
+        // 이미 선택한 포션을 다시 누르면 선택 해제
+        if (selectedConsumableItem != null && selectedConsumableItem.ItemSO == buttonInfo.itemData)
+        {
+            ClearSelectedConsumableItem();
+            return;
+        }
+
+        if (InventoryManager.Instance == null)
+        {
+            Debug.LogWarning("InventoryManager가 없습니다.");
+            return;
+        }
+
         List<InventoryItemViewData> consumableItems = InventoryManager.Instance.GetBattlePreparationConsumableItems();
 
         InventoryItemViewData matchedItem = consumableItems.Find(item => item.ItemSO == buttonInfo.itemData);
@@ -413,24 +427,59 @@ public class BattleUIManager : SceneSingleton<BattleUIManager>
         if (matchedItem == null)
         {
             Debug.LogWarning("보유 중인 전투 준비 소비 아이템이 아니거나 수량이 없습니다.");
+
+            RefreshConsumableItemUI();
             return;
         }
 
-        foreach (var btn in consumableItemButtons)
-        {
-            btn.image.color = (btn == clickedButton) ? new Color(1f, 0.56f, 0f, 0.2f) : Color.white;
-        }
-
+        // 다른 포션을 선택하면 이전 선택을 교체
         selectedConsumableItem = matchedItem;
+
+        RefreshConsumableItemUI();
     }
 
-    private void ClearSelectedConsumableItem()
+    private void RefreshConsumableItemUI()
     {
-        selectedConsumableItem = null;
+        // 이미 받아둔 인벤토리를 읽는 동작
+        List<InventoryItemViewData> items = InventoryManager.Instance != null ? InventoryManager.Instance.GetBattlePreparationConsumableItems() : new List<InventoryItemViewData>();
 
-        foreach (var btn in consumableItemButtons)
+        foreach (var button in consumableItemButtons)
         {
-            btn.image.color = Color.white;
+            if (button == null)
+                continue;
+
+            ConsumableButtonInfo info = button.GetComponent<ConsumableButtonInfo>();
+
+            if (info == null || info.itemData == null)
+            {
+                if (info != null)
+                    info.SetCount(0);
+
+                button.interactable = false;
+                continue;
+            }
+
+            int ownedCount = 0;
+
+            foreach (var item in items)
+            {
+                if (item.ItemSO == info.itemData)
+                {
+                    ownedCount += Mathf.Max(0, item.Response.Quantity);
+                }
+            }
+
+            bool isSelected = selectedConsumableItem != null && selectedConsumableItem.ItemSO == info.itemData;
+
+            // 실제 인벤토리는 변경하지 않고 표시만 1개 차감
+            int displayCount = Mathf.Max(0, ownedCount - (isSelected ? 1 : 0));
+
+            info.SetCount(displayCount);
+
+            button.image.color = isSelected ? new Color(1f, 0.56f, 0f, 0.2f) : Color.white;
+
+            // 1개 보유 → 선택 후 표시가 0이어도 다시 눌러 해제 가능
+            button.interactable = !isReady && (ownedCount > 0 || isSelected);
         }
     }
 
@@ -463,6 +512,12 @@ public class BattleUIManager : SceneSingleton<BattleUIManager>
 
         selectedConsumableItem = latestItem;
         return true;
+    }
+
+    private void ClearSelectedConsumableItem()
+    {
+        selectedConsumableItem = null;
+        RefreshConsumableItemUI();
     }
 
     // 장비 아이템 장착--------------------------------------------
@@ -642,6 +697,8 @@ public class BattleUIManager : SceneSingleton<BattleUIManager>
         {
             equipActionButton.interactable = true;
             readyButton.interactable = true;
+
+            RefreshConsumableItemUI();
         }
     }
 
@@ -745,6 +802,9 @@ public class BattleUIManager : SceneSingleton<BattleUIManager>
             isMeReadyText.text = "WAITING";
             isMeReadyText.color = Color.black;
         }
+
+        RefreshConsumableItemUI();
+
         // RPC 송신 (상대방 READY 글자 실시간 변경)
         BattleManager.Instance.SendReadyState(isReady);
         // 포톤 서버에 준비 상태 등록 (방장의 전투 시작 체크)
