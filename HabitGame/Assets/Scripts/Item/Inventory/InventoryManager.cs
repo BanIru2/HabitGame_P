@@ -649,6 +649,9 @@ public class InventoryManager : SceneSingleton<InventoryManager>
             if (item.ItemSO is not EquipmentDataSO equipment)
                 continue;
 
+            if (equipment.equipmentType == EquipmentType.Shoes)
+                continue;
+
             result[equipment.partsType] = equipment.PartsIndex;
         }
 
