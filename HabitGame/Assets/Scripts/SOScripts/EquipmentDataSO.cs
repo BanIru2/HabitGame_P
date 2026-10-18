@@ -22,6 +22,11 @@ public class EquipmentDataSO : ItemDataSO
     [Header("상승 스탯 종류 / 수치")]
     public StatBonus[] statBonuses;
 
+    [Header("장비 티어")]
+    [SerializeField, Range(0, 4)]
+    [Tooltip("1~4: 명시적 티어. 0: 기존 에셋의 해금 레벨 기준 티어를 유지합니다.")]
+    private int tier;
+
     public const int MaxLevel = 10;
 
     [Header("에셋 연동 데이터")]
@@ -31,8 +36,10 @@ public class EquipmentDataSO : ItemDataSO
     public int PartsIndex => partsIndex;
 
     // ---------------------- 티어 치환 프로퍼티 ------------------------
+    public int Tier => tier > 0 ? Mathf.Clamp(tier, 1, 4) : LegacyTier;
+
     // 아이템 해금 조건 레벨에 따라 티어 결정
-    public int Tier => unlockCondition.requiredAttributeLevel switch
+    private int LegacyTier => (unlockCondition?.requiredAttributeLevel ?? 0) switch
     {
         >= 7 => 4, // 4티어
         >= 4 => 3, // 3티어
