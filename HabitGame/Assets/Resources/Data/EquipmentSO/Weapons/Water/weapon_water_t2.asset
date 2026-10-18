@@ -10,22 +10,23 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fde2df7f89627df438c5a16248a68d02, type: 3}
-  m_Name: tmpHelmet
+  m_Name: weapon_water_t2
   m_EditorClassIdentifier: 
   itemType: 0
-  itemId: 8
-  displayName: "\uC784\uC2DC\uD5EC\uBA67(\uB098\uBB34\uC0BF\uAC13)"
-  description: "\uB098\uBB34\uB85C \uC0BF\uAC13\uB9CC\uB4E4\uC5C8\uC148"
+  itemId: weapon_water_t2
+  displayName: "\uD558\uB298\uBE5B \uC9C0\uD321\uC774"
+  description: "\uB9D1\uC740 \uD558\uB298\uBE5B \uC7A5\uC2DD\uC774 \uB2EC\uB9B0 \uB098\uBB34\uC9C0\uD321\uC774."
   cost: 0
-  icon: {fileID: 21300000, guid: ab9b135518a70884795b698b97ccc5f6, type: 3}
+  icon: {fileID: 21300000, guid: e755888d9b5f1441ead164d78166d916, type: 3}
   unlockCondition:
-    requiredAttributeLevel: 0
-    requiredAttribute: 0
+    requiredAttributeLevel: 1
+    requiredAttribute: 2
     requiredDailyStreak: 0
     requiredWeeklyStreak: 0
-  equipmentType: 3
+  equipmentType: 0
   statBonuses:
-  - statType: 3
-    value: 100
-  partsType: 2
-  partsIndex: 4
+  - statType: 1
+    value: 10
+  tier: 2
+  partsType: 10
+  partsIndex: 3
