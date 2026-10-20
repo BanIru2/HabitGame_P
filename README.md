@@ -1,5 +1,7 @@
 # HabitGame : 습관 형성 및 관리 게이미피케이션 앱
 
+> ※ 본 프로젝트는 현재 개발 중이며, 이 저장소는 **포트폴리오용 복제 저장소**입니다(2026.10.18 기준). 실제 개발은 [원본 저장소](https://github.com/BanIru2/habitGame)에서 진행합니다.
+
 <p align="center">
   <img src="./docs/images/HabitGame_Equipment.gif" alt="장비 시스템 시연" width="35%" />
   <img src="./docs/images/HabitGame_PvP.gif" alt="1대1 자동 턴제 PvP 시연" width="35%" />
