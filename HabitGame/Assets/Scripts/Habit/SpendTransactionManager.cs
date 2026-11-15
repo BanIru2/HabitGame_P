@@ -112,6 +112,32 @@ public class SpendTransactionManager : MonoBehaviour
         ApplyRuntimeStyle(newItem);
         SetEmptyStateVisible(false);
 
+
+        // -----------------------------------------
+        // Merchant Name (사용처)
+        // -----------------------------------------
+        Transform merchantTransform =
+            newItem.transform.Find("MerchantNameText");
+
+        if (merchantTransform != null)
+        {
+            TextMeshProUGUI merchantText =
+                merchantTransform.GetComponent<TextMeshProUGUI>();
+
+            if (merchantText != null)
+            {
+                merchantText.text =
+                    string.IsNullOrWhiteSpace(transaction.MerchantName)
+                        ? "사용처 미등록"
+                        : transaction.MerchantName;
+            }
+        }
+        else
+        {
+            Debug.LogWarning("MerchantNameText를 찾지 못했습니다.");
+        }
+
+
         // -----------------------------------------
         // Category
         // -----------------------------------------
@@ -191,6 +217,38 @@ public class SpendTransactionManager : MonoBehaviour
                         : date;
             }
         }
+
+
+        // -----------------------------------------
+        // Description (메모)
+        // -----------------------------------------
+        Transform descriptionTransform =
+            newItem.transform.Find("DescriptionText");
+
+        if (descriptionTransform != null)
+        {
+            TextMeshProUGUI descriptionText =
+                descriptionTransform.GetComponent<TextMeshProUGUI>();
+
+            if (descriptionText != null)
+            {
+                bool hasDescription =
+                    !string.IsNullOrWhiteSpace(transaction.Description);
+
+                descriptionText.gameObject.SetActive(hasDescription);
+
+                if (hasDescription)
+                {
+                    descriptionText.text =
+                        "메모: " + transaction.Description;
+                }
+            }
+        }
+        else
+        {
+            Debug.LogWarning("DescriptionText를 찾지 못했습니다.");
+        }
+
 
         // -----------------------------------------
         // 거래 ID + 기존 예외 상태 전달
