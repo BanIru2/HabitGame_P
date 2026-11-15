@@ -1023,7 +1023,7 @@ public class BattleUIManager : SceneSingleton<BattleUIManager>
         else
         {
             isReady = false;
-            readyButton.image.color = Color.blue;
+            readyButton.image.color = Color.white;
             buttonText.text = "준비 완료";
             isMeReadyText.text = "WAITING";
             isMeReadyText.color = WaitingStateColor;
