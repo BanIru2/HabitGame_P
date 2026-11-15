@@ -389,7 +389,7 @@ public class InventoryManager : SceneSingleton<InventoryManager>
         equipDescText.text = itemSO.description;
 
         doEquipButtonText.text = data.IsEquipped ? "해제하기" : "장착하기";
-        doEquipButton.image.color = data.IsEquipped ? Color.red : new Color32(50,184,255, 255);
+        doEquipButton.image.color = data.IsEquipped ? Color.red : Color.white;
     }
 
     private void OpenConsumDetail(InventoryItemResponse data, ConsumableDataSO itemSO)

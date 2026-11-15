@@ -851,7 +851,7 @@ public class BattleUIManager : SceneSingleton<BattleUIManager>
         bool isEquipped = item.Response.IsEquipped;
 
         equipActionButtonText.text = isEquipped ? "해제하기" : "장착하기";
-        equipActionButton.image.color = isEquipped ? Color.red : new Color32(50, 184, 255, 255);
+        equipActionButton.image.color = isEquipped ? Color.red : Color.white;
     }
 
     private void CloseEquipSelectPanel()
