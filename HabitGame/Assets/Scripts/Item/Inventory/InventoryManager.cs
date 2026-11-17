@@ -48,6 +48,8 @@ public class InventoryManager : SceneSingleton<InventoryManager>
     [SerializeField]
     private TextMeshProUGUI equipNameText;
     [SerializeField]
+    private TextMeshProUGUI equipTierText;
+    [SerializeField]
     private TextMeshProUGUI equipDescText;
     [SerializeField]
     private Button doEquipButton;
@@ -387,6 +389,10 @@ public class InventoryManager : SceneSingleton<InventoryManager>
         equipIcon.sprite = itemSO.icon;
         equipNameText.text = itemSO.displayName;
         equipDescText.text = itemSO.description;
+
+        // 티어 텍스트 및 색상 적용
+        equipTierText.SetText("{0}티어", itemSO.Tier);
+        equipTierText.color = itemSO.TierColor;
 
         doEquipButtonText.text = data.IsEquipped ? "해제하기" : "장착하기";
         doEquipButton.image.color = data.IsEquipped ? Color.red : Color.white;
