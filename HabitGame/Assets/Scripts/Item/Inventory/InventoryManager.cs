@@ -49,6 +49,8 @@ public class InventoryManager : SceneSingleton<InventoryManager>
     private TextMeshProUGUI equipNameText;
     [SerializeField]
     private TextMeshProUGUI equipTierText;
+    [SerializeField] 
+    private TextMeshProUGUI equipStatusText;
     [SerializeField]
     private TextMeshProUGUI equipDescText;
     [SerializeField]
@@ -388,6 +390,40 @@ public class InventoryManager : SceneSingleton<InventoryManager>
         equipDetail.SetActive(true);
         equipIcon.sprite = itemSO.icon;
         equipNameText.text = itemSO.displayName;
+        // 장비 상승 스탯 정보
+        if (equipStatusText != null)
+        {
+            sb.Clear();
+
+            foreach (var bonus in itemSO.statBonuses ?? Array.Empty<StatBonus>())
+            {
+                if (bonus == null || bonus.value == 0f)
+                    continue;
+
+                string statName = bonus.statType switch
+                {
+                    StatType.ATK => "공격력",
+                    StatType.DEF => "방어력",
+                    StatType.HP => "최대 체력",
+                    StatType.SPD => "속도",
+                    StatType.CRIT => "치명타율",
+                    _ => null
+                };
+
+                if (statName == null)
+                    continue;
+
+                if (sb.Length > 0)
+                    sb.AppendLine();
+
+                string format = bonus.statType == StatType.CRIT ? "+0.##%" : "+0.##";
+
+                sb.Append(statName).Append(' ').Append(bonus.value.ToString(format));
+            }
+
+            equipStatusText.SetText(sb);
+        }
+
         equipDescText.text = itemSO.description;
 
         // 티어 텍스트 및 색상 적용
