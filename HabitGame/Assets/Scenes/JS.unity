@@ -814,7 +814,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4884062679617154766, guid: a26177eba33f5974682a3254f05a89ab, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5571389994558976060, guid: a26177eba33f5974682a3254f05a89ab, type: 3}
       propertyPath: m_Pivot.x
@@ -3682,6 +3682,7 @@ MonoBehaviour:
   auroraLevelText: {fileID: 2049504818}
   auroraEXPText: {fileID: 679769439}
   titleManager: {fileID: 2019406967}
+  achievementManager: {fileID: 1899664376}
   characterPartsManager: {fileID: 536821035}
 --- !u!4 &1968575352
 Transform:
@@ -5785,6 +5786,14 @@ PrefabInstance:
       propertyPath: m_AnchoredPosition.y
       value: -330
       objectReference: {fileID: 0}
+    - target: {fileID: 5651497650201194386, guid: 545caedeb10c82c40bb4f0cfefc436ff, type: 3}
+      propertyPath: m_SizeDelta.x
+      value: 600
+      objectReference: {fileID: 0}
+    - target: {fileID: 5651497650201194386, guid: 545caedeb10c82c40bb4f0cfefc436ff, type: 3}
+      propertyPath: m_SizeDelta.y
+      value: 600
+      objectReference: {fileID: 0}
     - target: {fileID: 5720371764212541785, guid: 545caedeb10c82c40bb4f0cfefc436ff, type: 3}
       propertyPath: m_AnchorMax.x
       value: 0
@@ -6075,7 +6084,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6824041933395537019, guid: 545caedeb10c82c40bb4f0cfefc436ff, type: 3}
       propertyPath: m_IsActive
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6831414166976811193, guid: 545caedeb10c82c40bb4f0cfefc436ff, type: 3}
       propertyPath: m_AnchorMax.y
