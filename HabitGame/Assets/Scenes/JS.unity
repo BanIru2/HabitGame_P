@@ -3537,14 +3537,14 @@ MonoBehaviour:
   slotParent: {fileID: 4729249235596113411}
   slotPrefab: {fileID: 7454485908958210363, guid: 46f6991b3360cbd489a612886f390433, type: 3}
   registeredAchievements:
-  - {fileID: 11400000, guid: 379310ce282efd94f8bfa0170f67032c, type: 2}
   - {fileID: 11400000, guid: 3320912635ebb0949bca3ed459908e27, type: 2}
-  - {fileID: 11400000, guid: 8b8b0c1ab6154b12a27dc49285618143, type: 2}
-  - {fileID: 11400000, guid: afc0c0360fd844d794fb9e1a1ed5f734, type: 2}
+  - {fileID: 11400000, guid: 379310ce282efd94f8bfa0170f67032c, type: 2}
   - {fileID: 11400000, guid: f80c3c1986d54bd19f2684e25040aec7, type: 2}
   - {fileID: 11400000, guid: a63437851efd4fd593c49db76c7009ba, type: 2}
-  - {fileID: 11400000, guid: 0274b7070596434fa5b559c8b48bf64f, type: 2}
+  - {fileID: 11400000, guid: 8b8b0c1ab6154b12a27dc49285618143, type: 2}
+  - {fileID: 11400000, guid: afc0c0360fd844d794fb9e1a1ed5f734, type: 2}
   - {fileID: 11400000, guid: d950459f53884650bd8223e12baece0a, type: 2}
+  - {fileID: 11400000, guid: 0274b7070596434fa5b559c8b48bf64f, type: 2}
   backendManager: {fileID: 6724339554472274061}
   useLocalTestData: 0
 --- !u!4 &1899664377
