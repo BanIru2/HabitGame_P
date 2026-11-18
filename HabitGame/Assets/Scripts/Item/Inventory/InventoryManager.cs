@@ -394,6 +394,7 @@ public class InventoryManager : SceneSingleton<InventoryManager>
         if (equipStatusText != null)
         {
             sb.Clear();
+            double multiplier = EquipmentDataSO.GetStatMultiplier(Math.Max(1, data.Level));
 
             foreach (var bonus in itemSO.statBonuses ?? Array.Empty<StatBonus>())
             {
@@ -416,9 +417,20 @@ public class InventoryManager : SceneSingleton<InventoryManager>
                 if (sb.Length > 0)
                     sb.AppendLine();
 
-                string format = bonus.statType == StatType.CRIT ? "+0.##%" : "+0.##";
+                bool isCrit = bonus.statType == StatType.CRIT;
+                double baseValue = bonus.value;
+                double scaledValue = baseValue * multiplier;
 
-                sb.Append(statName).Append(' ').Append(bonus.value.ToString(format));
+                double totalValue = isCrit ? scaledValue : Math.Round(scaledValue, MidpointRounding.AwayFromZero);
+
+                double enhancementGain = totalValue - baseValue;
+                string format = isCrit ? "0.##%" : "0.##";
+
+                sb.Append(statName)
+                  .Append(" +").Append(totalValue.ToString(format))
+                  .Append(" (").Append(baseValue.ToString(format))
+                  .Append(" + ").Append(enhancementGain.ToString(format))
+                  .Append(')');
             }
 
             equipStatusText.SetText(sb);
