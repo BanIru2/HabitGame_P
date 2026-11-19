@@ -63,6 +63,8 @@ public class HabitListManager : MonoBehaviour
         new Color32(244, 244, 244, 255); // #F4F4F4
 
     private string selectedPeriod = "DAILY";
+    private int dailyStreak;
+    private int weeklyStreak;
 
     public string SelectedPeriod => selectedPeriod;
 
@@ -139,6 +141,21 @@ public class HabitListManager : MonoBehaviour
             return;
         }
 
+        // 서버에서 받은 사용자 전체 Streak 저장
+        // 목표가 없는 경우 이전 사용자의 값이 남지 않도록 초기화
+        dailyStreak = 0;
+        weeklyStreak = 0;
+
+        foreach (HabitGoalResponse habit in habits)
+        {
+            if (habit == null)
+                continue;
+
+            dailyStreak = habit.FinalizedDailyStreak ?? 0;
+            weeklyStreak = habit.FinalizedWeeklyStreak ?? 0;
+            break;
+        }
+
         foreach (HabitGoalResponse habit in habits)
         {
             if (habit == null)
@@ -148,6 +165,7 @@ public class HabitListManager : MonoBehaviour
         }
 
         RefreshSummary();
+        UpdateSummaryDisplay();
     }
 
     // =========================================
@@ -240,15 +258,28 @@ public class HabitListManager : MonoBehaviour
         Toggle toggle =
             newHabit.GetComponentInChildren<Toggle>();
 
+
         if (toggle != null)
         {
-            toggle.SetIsOnWithoutNotify(
-                habit.CompletedToday
-            );
+            // 주간 CHECK 목표는 오늘 기록 여부로 판단
+            bool isWeeklyCheck =
+                habit.Period?.Equals(
+                    "WEEKLY",
+                    System.StringComparison.OrdinalIgnoreCase
+                ) == true &&
+                habit.RecordType?.Equals(
+                    "CHECK",
+                    System.StringComparison.OrdinalIgnoreCase
+                ) == true;
 
-            toggle.interactable =
-                !habit.CompletedToday;
+            bool isCheckedToday = isWeeklyCheck
+                ? habit.RecordedToday
+                : habit.CompletedToday;
+
+            toggle.SetIsOnWithoutNotify(isCheckedToday);
+            toggle.interactable = !isCheckedToday;
         }
+
 
         // =========================================
         // Habit 데이터 연결
@@ -378,11 +409,13 @@ public class HabitListManager : MonoBehaviour
         {
             if (selectedPeriod == "DAILY")
             {
-                summaryStreakText.text = "일일 연속 달성";
+                summaryStreakText.text =
+                    $"{dailyStreak}일 연속 달성";
             }
             else if (selectedPeriod == "WEEKLY")
             {
-                summaryStreakText.text = "주간 연속 달성";
+                summaryStreakText.text =
+                    $"{weeklyStreak}주 연속 달성";
             }
         }
 

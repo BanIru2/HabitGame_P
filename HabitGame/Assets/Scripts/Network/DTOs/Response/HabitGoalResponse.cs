@@ -53,9 +53,29 @@ public class HabitGoalResponse
     [JsonProperty("completedToday")]
     public bool CompletedToday { get; set; }
 
+    // 오늘 기록을 등록했는지 여부 (주간 CHECK 목표)
+    [JsonProperty("recordedToday")]
+    public bool RecordedToday { get; set; }
+
     // 현재 연속 달성 횟수(스트릭)
     [JsonProperty("streakCount")]
     public int StreakCount { get; set; }
+
+    // 확정된 일일 연속 달성 횟수
+    [JsonProperty("finalizedDailyStreak")]
+    public int? FinalizedDailyStreak { get; set; }
+
+    // 확정된 주간 연속 달성 횟수
+    [JsonProperty("finalizedWeeklyStreak")]
+    public int? FinalizedWeeklyStreak { get; set; }
+
+    // 오늘의 모든 일일 목표 완료 여부
+    [JsonProperty("todayAllCompleted")]
+    public bool TodayAllCompleted { get; set; }
+
+    // 이번 주 모든 주간 목표 완료 여부
+    [JsonProperty("thisWeekAllCompleted")]
+    public bool ThisWeekAllCompleted { get; set; }
 
     // 현재 활성화 여부
     [JsonProperty("isActive")]
@@ -67,4 +87,8 @@ public class HabitGoalResponse
 
     [JsonProperty("message")]
     public string Message { get; set; }
+
+    // 지난주 목표를 이번 주에 이미 가져왔는지 여부
+    [JsonProperty("alreadyImported")]
+    public bool AlreadyImported { get; set; }
 }

@@ -14,6 +14,7 @@ public class WeeklyReportManager : MonoBehaviour
     [Header("Habit Report")]
     [SerializeField] private TMP_Text habitAchievementText;
     [SerializeField] private TMP_Text habitCompletedText;
+    [SerializeField] private TMP_Text incompleteHabitText;
 
     [Header("Spending Report")]
     [SerializeField] private TMP_Text spendingBudgetText;
@@ -31,6 +32,11 @@ public class WeeklyReportManager : MonoBehaviour
 
     private WeeklyReportService weeklyReportService;
 
+    private void Awake()
+    {
+        ClearReport();
+    }
+
     private void Start()
     {
         if (backButton != null)
@@ -38,22 +44,71 @@ public class WeeklyReportManager : MonoBehaviour
 
         if (ServiceRegistry.Instance != null)
             weeklyReportService = ServiceRegistry.Instance.WeeklyReport;
+    }
+
+    private void OnEnable()
+    {
+        ClearReport();
+
+        if (ServiceRegistry.Instance != null)
+            weeklyReportService = ServiceRegistry.Instance.WeeklyReport;
 
         LoadWeeklyReport();
     }
 
+    private void ClearReport()
+    {
+        if (weekText != null)
+            weekText.text = "ì£¼ê°„ ë¦¬í¬íŠ¸ë¥¼ ë¶ˆëŸ¬ì˜¤ëŠ” ì¤‘...";
+
+        if (habitAchievementText != null)
+            habitAchievementText.text = "";
+
+        if (habitCompletedText != null)
+            habitCompletedText.text = "";
+
+        if (incompleteHabitText != null)
+            incompleteHabitText.text = "";
+
+        if (spendingBudgetText != null)
+            spendingBudgetText.text = "";
+
+        if (spendingSpentText != null)
+            spendingSpentText.text = "";
+
+        if (spendingUsageText != null)
+            spendingUsageText.text = "";
+
+        if (aiSummaryText != null)
+            aiSummaryText.text = "";
+
+        if (aiGoodPointText != null)
+            aiGoodPointText.text = "";
+
+        if (aiImprovementText != null)
+            aiImprovementText.text = "";
+
+        if (aiNextWeekText != null)
+            aiNextWeekText.text = "";
+    }
+
     private async void LoadWeeklyReport()
     {
-        // ¹é¿£µå ¹Ì±¸Çö »óÅÂ¿¡¼­´Â Dummy µ¥ÀÌÅÍ »ç¿ë
+        // ë¡œì»¬ í…ŒìŠ¤íŠ¸ ëª¨ë“œ
         if (useLocalMode)
         {
             LoadDummyReport();
             return;
         }
 
+        // ì„œë¹„ìŠ¤ ì—°ê²° í™•ì¸
         if (weeklyReportService == null)
         {
-            Debug.LogError("WeeklyReportService¸¦ Ã£À» ¼ö ¾ø½À´Ï´Ù.");
+            Debug.LogError("WeeklyReportServiceë¥¼ ì°¾ì„ ìˆ˜ ì—†ìŠµë‹ˆë‹¤.");
+
+            if (weekText != null)
+                weekText.text = "ë¦¬í¬íŠ¸ë¥¼ ë¶ˆëŸ¬ì˜¤ì§€ ëª»í–ˆìŠµë‹ˆë‹¤.";
+
             return;
         }
 
@@ -62,23 +117,39 @@ public class WeeklyReportManager : MonoBehaviour
             WeeklyReportResponse response =
                 await weeklyReportService.GetWeeklyReportAsync();
 
+            // ì‘ë‹µ ë°ì´í„°ê°€ ì—†ëŠ” ê²½ìš°
             if (response == null)
             {
-                Debug.LogWarning("Weekly Report ÀÀ´äÀÌ ¾ø½À´Ï´Ù.");
+                Debug.LogWarning("Weekly Report ì‘ë‹µì´ ì—†ìŠµë‹ˆë‹¤.");
+
+                if (weekText != null)
+                    weekText.text = "ë¦¬í¬íŠ¸ ë°ì´í„°ê°€ ì—†ìŠµë‹ˆë‹¤.";
+
                 return;
             }
 
+            // ì •ìƒ ì‘ë‹µ
             ApplyReport(response);
 
-            Debug.Log("Weekly Report ¼­¹ö µ¥ÀÌÅÍ ·Îµå ¿Ï·á");
+            Debug.Log("Weekly Report ì„œë²„ ë°ì´í„° ë¡œë“œ ì™„ë£Œ");
         }
         catch (Exception e)
         {
             Debug.LogError(
-                $"Weekly Report ¼­¹ö µ¥ÀÌÅÍ ·Îµå ½ÇÆĞ: {e.Message}"
+                $"Weekly Report ì„œë²„ ë°ì´í„° ë¡œë“œ ì‹¤íŒ¨: {e.Message}"
             );
+
+            if (weekText != null)
+            {
+                // ë¡œê·¸ì¸ ì •ë³´ê°€ ì—†ëŠ” ê²½ìš°
+                if (e.Message.Contains("ë¡œê·¸ì¸ì´ í•„ìš”"))
+                    weekText.text = "ë¡œê·¸ì¸ í›„ ë¦¬í¬íŠ¸ë¥¼ í™•ì¸í•  ìˆ˜ ìˆìŠµë‹ˆë‹¤.";
+                else
+                    weekText.text = "ë¦¬í¬íŠ¸ë¥¼ ë¶ˆëŸ¬ì˜¤ì§€ ëª»í–ˆìŠµë‹ˆë‹¤.";
+            }
         }
     }
+
 
     private void LoadDummyReport()
     {
@@ -116,7 +187,7 @@ public class WeeklyReportManager : MonoBehaviour
 
         ApplyReport(dummyReport);
 
-        Debug.Log("Weekly Report Local Mode µ¥ÀÌÅÍ ·Îµå ¿Ï·á");
+        Debug.Log("Weekly Report Local Mode ë°ì´í„° ë¡œë“œ ì™„ë£Œ");
     }
 
     private void ApplyReport(WeeklyReportResponse report)
@@ -127,7 +198,7 @@ public class WeeklyReportManager : MonoBehaviour
             return;
         }
 
-        // ÁÖ°£ ³¯Â¥
+        // ì£¼ê°„ ë‚ ì§œ
         if (DateTime.TryParse(report.WeekStart, out DateTime weekStart) &&
             DateTime.TryParse(report.WeekEnd, out DateTime weekEnd))
         {
@@ -140,42 +211,54 @@ public class WeeklyReportManager : MonoBehaviour
                 $"{report.WeekStart} ~ {report.WeekEnd}";
         }
 
-        // »ıÈ°½À°ü
+        // ìƒí™œìŠµê´€
         habitAchievementText.text =
-            $"Achievement Rate     {report.HabitAchievementRate}%";
+            $"ëª©í‘œ ë‹¬ì„±ë¥      {report.HabitAchievementRate}%";
 
         habitCompletedText.text =
-            $"Completed     {report.CompletedHabitCount} / {report.TotalHabitCount}";
+            $"ì™„ë£Œí•œ ëª©í‘œ     {report.CompletedHabitCount} / {report.TotalHabitCount}";
 
-        // ¼Òºñ½À°ü
+        // ë¯¸ì™„ë£Œ ëª©í‘œ ìˆ˜ ê³„ì‚°
+        int incompleteCount = Mathf.Max(
+            0,
+            report.TotalHabitCount - report.CompletedHabitCount
+        );
+
+        if (incompleteHabitText != null)
+        {
+            incompleteHabitText.text =
+                $"ë¯¸ì™„ë£Œ ëª©í‘œ     {incompleteCount}ê°œ";
+        }
+
+        // ì†Œë¹„ìŠµê´€
         spendingBudgetText.text =
-            $"Weekly Budget     {report.WeeklyBudget:N0} Won";
+            $"ì£¼ê°„ ì˜ˆì‚°     {report.WeeklyBudget:N0}ì›";
 
         spendingSpentText.text =
-            $"Spent     {report.WeeklySpent:N0} Won";
+            $"ì‚¬ìš© ê¸ˆì•¡     {report.WeeklySpent:N0}ì›";
 
         spendingUsageText.text =
-            $"Budget Usage     {report.BudgetUsageRate}%";
+            $"ì˜ˆì‚° ì‚¬ìš©ë¥      {report.BudgetUsageRate}%";
 
-        // AI ÁÖ°£ ÇÇµå¹é
+        // AI ì£¼ê°„ í”¼ë“œë°±
         aiSummaryText.text =
-            $"Summary\n{report.AiSummary}";
+            $"<b><color=#866020>í•œ ì£¼ ìš”ì•½</color></b>\n{report.AiSummary}";
 
         aiGoodPointText.text =
-            $"Good Point\n{report.GoodPoint}";
+            $"<b><color=#866020>ì˜í•œ ì </color></b>\n{report.GoodPoint}";
 
         aiImprovementText.text =
-            $"Improvement\n{report.Improvement}";
+            $"<b><color=#866020>ê°œì„ í•  ì </color></b>\n{report.Improvement}";
 
         aiNextWeekText.text =
-            $"Next Week\n{report.NextWeekSuggestion}";
+            $"<b><color=#866020>ë‹¤ìŒ ì£¼ ì œì•ˆ</color></b>\n{report.NextWeekSuggestion}";
     }
 
     private void OnClickBack()
     {
         Debug.Log("Weekly Report Back Button Clicked");
 
-        // Weekly Report ÁøÀÔ È­¸éÀÌ Á¤ÇØÁö¸é ½ÇÁ¦ È­¸é ÀÌµ¿ ¿¬°á
+        // Weekly Report ì§„ì… í™”ë©´ì´ ì •í•´ì§€ë©´ ì‹¤ì œ í™”ë©´ ì´ë™ ì—°ê²°
     }
 
     private void OnDestroy()

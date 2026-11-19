@@ -26,15 +26,40 @@ public class HabitUIManager : SceneSingleton<HabitUIManager>
     [SerializeField] private HabitListManager habitListManager;
     [SerializeField] private HabitGoalUI habitGoalUI;
 
+    [SerializeField] private ImportWeeklyPopupUI importWeeklyPopupUI;
+
     private void Start()
     {
         OpenLife();
     }
-
     // =========================================
+    // 지난주 목표 가져오기 완료 이벤트 연결
+    // =========================================
+    private void OnEnable()
+    {
+        if (importWeeklyPopupUI != null)
+        {
+            importWeeklyPopupUI.ImportCompleted += OnWeeklyImportCompleted;
+        }
+    }
+
+    // 이벤트 중복 등록 방지
+    private void OnDisable()
+    {
+        if (importWeeklyPopupUI != null)
+        {
+            importWeeklyPopupUI.ImportCompleted -= OnWeeklyImportCompleted;
+        }
+    }
+
+    // 지난주 목표 가져오기 성공 시 목록 자동 갱신
+    private async void OnWeeklyImportCompleted()
+    {
+        await OpenHabitTap();
+    }
+
     // Habit 탭 진입
     // MainTapManager 등에서 호출
-    // =========================================
     public async Task OpenHabitTap()
     {
         OpenLife();
@@ -85,6 +110,7 @@ public class HabitUIManager : SceneSingleton<HabitUIManager>
     // =========================================
     public void OpenLife()
     {
+        SetTapBarActive(true);
         SetActive(topTab, true);
 
         SetActive(lifePanel, true);
@@ -104,6 +130,7 @@ public class HabitUIManager : SceneSingleton<HabitUIManager>
     // =========================================
     public void OpenSpend()
     {
+        SetTapBarActive(true);
         SetActive(topTab, true);
 
         SetActive(lifePanel, false);
@@ -123,6 +150,7 @@ public class HabitUIManager : SceneSingleton<HabitUIManager>
     // =========================================
     public void OpenLifeAddPanel()
     {
+        SetTapBarActive(false);
         SetActive(topTab, false);
 
         SetActive(lifePanel, false);
@@ -150,6 +178,7 @@ public class HabitUIManager : SceneSingleton<HabitUIManager>
     // =========================================
     public void OpenSpendAddPanel()
     {
+        SetTapBarActive(false);
         SetActive(topTab, false);
 
         SetActive(lifePanel, false);
@@ -169,6 +198,7 @@ public class HabitUIManager : SceneSingleton<HabitUIManager>
     // =========================================
     public void OpenBudgetSetting()
     {
+        SetTapBarActive(false);
         SetActive(topTab, false);
 
         SetActive(lifePanel, false);
@@ -209,6 +239,7 @@ public class HabitUIManager : SceneSingleton<HabitUIManager>
     // =========================================
     public void OpenSpendHistory()
     {
+        SetTapBarActive(false);
         SetActive(topTab, false);
 
         SetActive(lifePanel, false);
@@ -262,6 +293,20 @@ public class HabitUIManager : SceneSingleton<HabitUIManager>
         if (target != null)
         {
             target.SetActive(active);
+        }
+    }
+
+    private void SetTapBarActive(bool active)
+    {
+        Transform tapBar = transform.root.Find("TapBar");
+
+        if (tapBar != null)
+        {
+            tapBar.gameObject.SetActive(active);
+        }
+        else
+        {
+            Debug.LogError("Canvas/TapBar를 찾을 수 없습니다.");
         }
     }
 }

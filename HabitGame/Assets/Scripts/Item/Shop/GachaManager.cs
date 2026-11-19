@@ -69,7 +69,11 @@ public class GachaManager : MonoBehaviour
     }
 
     // °¡Ã­ÅÇ ´Ý±â
-    public void CloseGachaPanel() => gachaPanel.SetActive(false);
+    public void CloseGachaPanel()
+    {
+        ClosePopups();
+        gachaPanel.SetActive(false);
+    }
 
     // È¹µæ °¡´É Àåºñ ¸®½ºÆ® ¼¼ÆÃ
     private void GetList()
@@ -84,6 +88,12 @@ public class GachaManager : MonoBehaviour
         {
             totalWeight += GetItemWeight(item);
         }
+    }
+
+    public void ClosePopups()
+    {
+        CloseProbabilityPopup();
+        resultPopupManager.Close();
     }
 
     // --------------------------- »Ì±â ¹× °¡ÁßÄ¡ --------------------------------
@@ -145,11 +155,15 @@ public class GachaManager : MonoBehaviour
             return;
         }
 
+        if (!MainTabManager.Instance.TryLockNavigation()) return;
+
         oneGachaButton.interactable = false;
         tenGachaButton.interactable = false;
 
         try
         {
+            dim.SetActive(true);
+
             List<EquipmentDataSO> results = new List<EquipmentDataSO>(count);
             List<string> itemIds = new List<string>(count);
             // °¡Ã­µ¹¸®±â
@@ -188,6 +202,10 @@ public class GachaManager : MonoBehaviour
         }
         finally
         {
+            dim.SetActive(false);
+
+            MainTabManager.Instance.UnlockNavigation();
+
             oneGachaButton.interactable = true;
             tenGachaButton.interactable = true;
         }

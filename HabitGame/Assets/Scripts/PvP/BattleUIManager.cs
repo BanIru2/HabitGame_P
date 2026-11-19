@@ -5,14 +5,16 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Security.Cryptography;    // 모호성 방지
 using System.Threading.Tasks;
+using System.Text;
 using TMPro;
-using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.UI;
 using Hashtable = ExitGames.Client.Photon.Hashtable;
 
 public class BattleUIManager : SceneSingleton<BattleUIManager>
 {
+    private readonly StringBuilder sb = new StringBuilder(64);
+
     [SerializeField]
     private PhotonManager photonManager;
 
@@ -57,6 +59,14 @@ public class BattleUIManager : SceneSingleton<BattleUIManager>
     [SerializeField]
     private Button checkOppAttrButton;
     [SerializeField]
+    private GameObject attrScoutPppup;
+    [SerializeField]
+    private TextMeshProUGUI remainScouterCountText;
+    [SerializeField]
+    private Button useScouterButton;
+    [SerializeField]
+    private Button closeScoutButton;
+    [SerializeField]
     private TextMeshProUGUI[] oppAttrText;
     [SerializeField]
     private CanvasGroup[] oppAttrTextCanvasGroup;
@@ -83,6 +93,8 @@ public class BattleUIManager : SceneSingleton<BattleUIManager>
     private InventoryItemViewData selectedConsumableItem;
 
     private EquipmentType equipType;
+    private bool isUsedAttributeScout = false;
+    public bool IsUsedAttributeScout => isUsedAttributeScout;    // BattleManager 동기화 용 프로퍼티
     private bool isReady = false;
     private Color readyButtonDefaultColor;
     private string readyButtonDefaultText;
@@ -90,6 +102,21 @@ public class BattleUIManager : SceneSingleton<BattleUIManager>
     private string oppBattleNameDefaultText;
     private string[] oppAttrTextDefaultTexts;
     private float[] oppAttrTextDefaultAlphas;
+    private readonly List<EquipmentButtonVisualState> equipmentButtonVisualStates = new List<EquipmentButtonVisualState>();
+    private readonly Dictionary<AttributeType, Sprite> battleAttributeSprites = new Dictionary<AttributeType, Sprite>();
+    private Image myBattleAttributeImage;
+    private Image oppBattleAttributeImage;
+
+    private const string BattleAttributeIconName = "__15D7C_AttributeIcon";
+    private static readonly Color32 EquipmentSelectedColor = new Color32(0xC6, 0xE8, 0xAD, 0xFF);
+    private static readonly Color32 EquipmentSelectedHighlightedColor = new Color32(0xD7, 0xF1, 0xC5, 0xFF);
+    private static readonly Color32 EquipmentSelectedPressedColor = new Color32(0xA9, 0xCF, 0x90, 0xFF);
+    private static readonly Color32 EquipmentSelectedDisabledColor = new Color32(0xB8, 0xD2, 0xA4, 0xFF);
+    private static readonly Color32 EquipmentSelectedTextColor = new Color32(0x35, 0x56, 0x2B, 0xFF);
+    private static readonly Color32 EquipmentSelectedOutlineColor = new Color32(0x82, 0xAD, 0x68, 0xFF);
+    private static readonly Color32 ReadyStateColor = new Color32(0x4F, 0x7F, 0x52, 0xFF);
+    private static readonly Color32 WaitingStateColor = new Color32(0x86, 0x68, 0x5D, 0xFF);
+
 
     [Header("Ready Panel/EquipSelectPanel")]
     [SerializeField]
@@ -160,12 +187,13 @@ public class BattleUIManager : SceneSingleton<BattleUIManager>
     private TextMeshProUGUI turnCountText;
 
     // BattlePanel / ResultPanel
-    [SerializeField]
-    private GameObject winImage;
-    [SerializeField]
-    private GameObject loseImage;
-    [SerializeField]
-    private GameObject drawImage;
+    [Header("Battle Panel/ResultPanel")]
+    [SerializeField] 
+    private TextMeshProUGUI resultTitleText;
+    [SerializeField] 
+    private TextMeshProUGUI myResultNameText;
+    [SerializeField] 
+    private TextMeshProUGUI oppResultNameText;
     [SerializeField]
     private TextMeshProUGUI currentRankingPointText;
     [SerializeField]
@@ -175,12 +203,20 @@ public class BattleUIManager : SceneSingleton<BattleUIManager>
     [SerializeField]
     private Button checkButton;
 
+    // 승패 제목 색상값
+    private static readonly Color32 VictoryColor = new Color32(0xB5, 0x82, 0x28, 0xFF);
+    private static readonly Color32 DefeatColor = new Color32(0xB8, 0x55, 0x4F, 0xFF);
+    private static readonly Color32 DrawColor = new Color32(0x78, 0x68, 0x62, 0xFF);
+    // 점수 변화 색상값
+    private static readonly Color32 PositiveColor = new Color32(0x4F, 0x7F, 0x52, 0xFF);
+    private static readonly Color32 NegativeColor = new Color32(0xB8, 0x55, 0x4F, 0xFF);
+    private static readonly Color32 NeutralColor = new Color32(0x78, 0x68, 0x62, 0xFF);
+
     [SerializeField]
     private RankingboardManager rankingboardManager;
 
     [SerializeField]
     private GameObject tapBar;
-
 
     protected override void Awake()
     {
@@ -190,6 +226,8 @@ public class BattleUIManager : SceneSingleton<BattleUIManager>
 
         CacheReadyButtonDefaultState();
         CacheOpponentInfoDefaultState();
+        CacheEquipmentButtonDefaultStates();
+        CacheBattleAttributeUI();
 
         matchStartButton.onClick.AddListener(OnClickStartMatchmaking);
         matchCancelButton.onClick.AddListener(OnClickCancelMatchmaking);
@@ -208,6 +246,9 @@ public class BattleUIManager : SceneSingleton<BattleUIManager>
         }
         readyButton.onClick.AddListener(OnClickReadyButton);
         checkButton.onClick.AddListener(OnClickCheckButton);
+
+        useScouterButton.onClick.AddListener(UseAttrScouter);
+        closeScoutButton.onClick.AddListener(CloseAttrScoutPopup);
 
         equipSelectCloseButton.onClick.AddListener(CloseEquipSelectPanel);
 
@@ -273,6 +314,8 @@ public class BattleUIManager : SceneSingleton<BattleUIManager>
         lobbyPanel.SetActive(false);
 
         isMatching = true;
+        isUsedAttributeScout = false;
+        CloseAttrScoutPopup();
         ResetReadyUI();
         ClearOpponentInfoUI();
 
@@ -297,19 +340,22 @@ public class BattleUIManager : SceneSingleton<BattleUIManager>
     // 준비 단계 완료 시(양 측 다 준비 완료 or 준비 시간 끝) 화면 전환
     public void ReadyComplete(string receivedBattleId)
     {
+        attrScoutPppup.SetActive(false);
         readyPanel.SetActive(false);
         battlePanel.SetActive(true);
         InitBattleUI(receivedBattleId);
+        RefreshBattleAttributeIcons();
     }
 
     private void ResetReadyUI()
     {
         isReady = false;
         isMeReadyText.text = "WAITING";
-        isMeReadyText.color = Color.black;
+        isMeReadyText.color = WaitingStateColor;
         isOppReadyText.text = "WAITING";
-        isOppReadyText.color = Color.black;
+        isOppReadyText.color = WaitingStateColor;
         readyButton.interactable = true;
+        checkOppAttrButton.interactable = true;
 
         ClearSelectedConsumableItem();
 
@@ -319,6 +365,9 @@ public class BattleUIManager : SceneSingleton<BattleUIManager>
         {
             buttonText.text = readyButtonDefaultText;
         }
+
+        RefreshEquipmentSelectionUI();
+        ClearBattleAttributeIcons();
     }
 
     private void CacheReadyButtonDefaultState()
@@ -346,6 +395,136 @@ public class BattleUIManager : SceneSingleton<BattleUIManager>
         }
     }
 
+    private void CacheEquipmentButtonDefaultStates()
+    {
+        equipmentButtonVisualStates.Clear();
+        foreach (Button button in equipItemButtons)
+        {
+            EquipButtonInfo info = button != null ? button.GetComponent<EquipButtonInfo>() : null;
+            if (info == null) continue;
+
+            TMP_Text text = button.GetComponentInChildren<TMP_Text>(true);
+            Outline outline = button.GetComponent<Outline>();
+            equipmentButtonVisualStates.Add(new EquipmentButtonVisualState
+            {
+                Button = button,
+                Type = info.type,
+                DefaultColors = button.colors,
+                DefaultImageColor = button.image != null ? button.image.color : Color.white,
+                DefaultTextColor = text != null ? text.color : Color.white,
+                Outline = outline,
+                DefaultOutlineEnabled = outline != null && outline.enabled,
+                DefaultOutlineColor = outline != null ? outline.effectColor : Color.clear
+            });
+        }
+    }
+
+    private void RefreshEquipmentSelectionUI()
+    {
+        foreach (EquipmentButtonVisualState state in equipmentButtonVisualStates)
+        {
+            bool isEquipped = false;
+            if (InventoryManager.Instance != null)
+            {
+                List<InventoryItemViewData> items = InventoryManager.Instance.GetEquipmentItems(state.Type);
+                isEquipped = items.Exists(item =>
+                    item != null && item.Response != null && item.Response.IsEquipped);
+            }
+
+            ColorBlock colors = state.DefaultColors;
+            if (isEquipped)
+            {
+                colors.normalColor = EquipmentSelectedColor;
+                colors.highlightedColor = EquipmentSelectedHighlightedColor;
+                colors.pressedColor = EquipmentSelectedPressedColor;
+                colors.selectedColor = EquipmentSelectedHighlightedColor;
+                colors.disabledColor = EquipmentSelectedDisabledColor;
+            }
+
+            state.Button.colors = colors;
+            if (state.Button.image != null)
+            {
+                state.Button.image.color = isEquipped
+                    ? (state.Button.interactable ? colors.normalColor : colors.disabledColor)
+                    : state.DefaultImageColor;
+            }
+
+            TMP_Text text = state.Button.GetComponentInChildren<TMP_Text>(true);
+            if (text != null)
+                text.color = isEquipped ? (Color)EquipmentSelectedTextColor : state.DefaultTextColor;
+
+            if (state.Outline != null)
+            {
+                state.Outline.enabled = isEquipped || state.DefaultOutlineEnabled;
+                state.Outline.effectColor = isEquipped
+                    ? (Color)EquipmentSelectedOutlineColor
+                    : state.DefaultOutlineColor;
+            }
+        }
+    }
+
+    private void CacheBattleAttributeUI()
+    {
+        battleAttributeSprites.Clear();
+        foreach (Button button in attrButtons)
+        {
+            AttributeButtonInfo info = button != null ? button.GetComponent<AttributeButtonInfo>() : null;
+            if (info == null || info.attrType == AttributeType.None) continue;
+
+            foreach (Image image in button.GetComponentsInChildren<Image>(true))
+            {
+                if (image == button.image || image.sprite == null) continue;
+                battleAttributeSprites[info.attrType] = image.sprite;
+                break;
+            }
+        }
+
+        myBattleAttributeImage = FindBattleAttributeImage(myName);
+        oppBattleAttributeImage = FindBattleAttributeImage(oppName);
+        ClearBattleAttributeIcons();
+    }
+
+    private static Image FindBattleAttributeImage(TMP_Text battleName)
+    {
+        Transform card = battleName != null ? battleName.transform.parent : null;
+        return card != null ? card.Find(BattleAttributeIconName)?.GetComponent<Image>() : null;
+    }
+
+    private void RefreshBattleAttributeIcons()
+    {
+        ClearBattleAttributeIcons();
+        if (!TryResolvePhotonManager() ||
+            !photonManager.TryCreateBattleUnits(out BattleUnit myUnit, out BattleUnit oppUnit))
+            return;
+
+        SetBattleAttributeIcon(myBattleAttributeImage, myUnit.attribute);
+        SetBattleAttributeIcon(oppBattleAttributeImage, oppUnit.attribute);
+    }
+
+    private void SetBattleAttributeIcon(Image target, AttributeType attribute)
+    {
+        if (target == null || attribute == AttributeType.None ||
+            !battleAttributeSprites.TryGetValue(attribute, out Sprite sprite) || sprite == null)
+            return;
+
+        target.sprite = sprite;
+        target.preserveAspect = true;
+        target.enabled = true;
+    }
+
+    private void ClearBattleAttributeIcons()
+    {
+        ClearBattleAttributeIcon(myBattleAttributeImage);
+        ClearBattleAttributeIcon(oppBattleAttributeImage);
+    }
+
+    private static void ClearBattleAttributeIcon(Image target)
+    {
+        if (target == null) return;
+        target.sprite = null;
+        target.enabled = false;
+    }
+
     private bool TryResolvePhotonManager()
     {
         if (photonManager == null)
@@ -362,13 +541,59 @@ public class BattleUIManager : SceneSingleton<BattleUIManager>
     // 상대 특성 확인 버튼 클릭 시 동작
     private void OnClickCheckOppAttr()
     {
-        // 사용 가능 여부 확인 및 횟수 차감
-        // 상대방 특성 레벨 체크(받아와야함)  << 이단계에서 이미 상대의 특성 정보를 갖고 있어야 함
-        // 텍스트 상대방 특성 레벨에 맞춰 변경
+        InventoryItemViewData data = InventoryManager.Instance.GetAttributeScouterData();
+        // 특성 탐색권을 보유하지 않은 경우
+        if (data == null)
+        {
+            ErrorPopupManager.Instance.ShowMessage("특성 탐색권을 보유하고 있지 않습니다.");
+            return;
+        }
+
+        OpenAttrScoutPopup(data);
+    }
+
+    // 특성 탐색권 팝업 활성화
+    private void OpenAttrScoutPopup(InventoryItemViewData data)
+    {
+        sb.Clear();
+        sb.Append("현재 남은 탐색권 개수 : ").Append(data.Response.Quantity);
+        remainScouterCountText.SetText(sb);
+
+        attrScoutPppup.SetActive(true);
+    }
+
+    // 특성 탐색권 팝업 UI 초기화
+    private void InitAttrScoutPopup()
+    {
+        remainScouterCountText.text = "현재 남은 탐색권 개수 : ";
+    }
+
+    // 특성 탐색권 팝업 닫기
+    private void CloseAttrScoutPopup()
+    {
+        attrScoutPppup.SetActive(false);
+        InitAttrScoutPopup();
+    }
+
+    // 특성 탐색권 사용
+    // 로컬 동작 후 전투 종료 시 서버 처리를 요청하여 전투가 정상종료 된 경우에만 사용처리되도록 구성
+    private void UseAttrScouter()
+    {
+        if (isUsedAttributeScout) return;
+
+        // 사용 플래그 활성화
+        isUsedAttributeScout = true;
+        // 특성 탐색권 팝업 여는 버튼 비활성화 (재사용 방지)
+        checkOppAttrButton.interactable = false;
+
         // 출력 (알파값 활성화)
-        foreach(var canvasGroup in oppAttrTextCanvasGroup){
+        foreach (var canvasGroup in oppAttrTextCanvasGroup)
+        {
             canvasGroup.alpha = 1f;
         }
+
+        // 사용 완료 후 팝업 닫기
+        CloseAttrScoutPopup();
     }
 
     // 사용할 특성 선택 버튼 클릭 시 동작
@@ -626,7 +851,7 @@ public class BattleUIManager : SceneSingleton<BattleUIManager>
         bool isEquipped = item.Response.IsEquipped;
 
         equipActionButtonText.text = isEquipped ? "해제하기" : "장착하기";
-        equipActionButton.image.color = isEquipped ? Color.red : new Color32(50, 184, 255, 255);
+        equipActionButton.image.color = isEquipped ? Color.red : Color.white;
     }
 
     private void CloseEquipSelectPanel()
@@ -671,6 +896,7 @@ public class BattleUIManager : SceneSingleton<BattleUIManager>
 
             List<InventoryItemViewData> items = InventoryManager.Instance.GetEquipmentItems(equipType);
             RenderItems(items);
+            RefreshEquipmentSelectionUI();
 
             InventoryItemViewData updatedItem = items.Find(item => item.Response.InventoryId == inventoryId);
             
@@ -792,15 +1018,15 @@ public class BattleUIManager : SceneSingleton<BattleUIManager>
             readyButton.image.color = Color.red;
             buttonText.text = "준비 취소";
             isMeReadyText.text = "READY";
-            isMeReadyText.color = Color.green;
+            isMeReadyText.color = ReadyStateColor;
         }
         else
         {
             isReady = false;
-            readyButton.image.color = Color.blue;
+            readyButton.image.color = Color.white;
             buttonText.text = "준비 완료";
             isMeReadyText.text = "WAITING";
-            isMeReadyText.color = Color.black;
+            isMeReadyText.color = WaitingStateColor;
         }
 
         RefreshConsumableItemUI();
@@ -817,7 +1043,7 @@ public class BattleUIManager : SceneSingleton<BattleUIManager>
     public void RPC_UpdateOpponentReady(bool ready)
     {
         isOppReadyText.text = ready ? "READY" : "WAITING";
-        isOppReadyText.color = ready ? Color.green : Color.red;
+        isOppReadyText.color = ready ? ReadyStateColor : WaitingStateColor;
     }
 
     public void SetMyInfoUI(string name)
@@ -869,7 +1095,7 @@ public class BattleUIManager : SceneSingleton<BattleUIManager>
         activeBattleId = receivedBattleId;
 
         InitCharacterHp();
-        InitResultImage();
+        HideResultPanel();
         InitRankingPointText();
         UpdateTurnText(1);
     }
@@ -897,11 +1123,8 @@ public class BattleUIManager : SceneSingleton<BattleUIManager>
         oppHpBar.fillAmount = 1f;
     }
 
-    private void InitResultImage()
+    private void HideResultPanel()
     {
-        winImage.SetActive(false);
-        loseImage.SetActive(false);
-        drawImage.SetActive(false);
         resultPanel.SetActive(false);
     }
 
@@ -978,9 +1201,14 @@ public class BattleUIManager : SceneSingleton<BattleUIManager>
         resultDisplayed = true;
         HideResultWaiting();
 
-        InitResultImage();
-        PrintResultImage(savedResultResponse.Result);
+        HideResultPanel();
+        SetResultTitle(savedResultResponse.Result);
+
+        myResultNameText.text = myName.text;
+        oppResultNameText.text = oppName.text;
+
         SetRankingPointText(savedResultResponse);
+
         resultPanel.SetActive(true);
     }
 
@@ -1054,6 +1282,8 @@ public class BattleUIManager : SceneSingleton<BattleUIManager>
         tapBar.SetActive(true);
 
         isMatching = false;
+        isUsedAttributeScout = false;
+        CloseAttrScoutPopup();
 
         UpdatePlayerCount(0);
         ResetReadyUI();
@@ -1087,30 +1317,36 @@ public class BattleUIManager : SceneSingleton<BattleUIManager>
         }
 
 
-        InitResultImage();
+        HideResultPanel();
         InitRankingPointText();
         InitCharacterHp();
 
         UpdateTurnText(0);
     }
 
-    private void PrintResultImage(string result)
+    private void SetResultTitle(string result)
     {
         if (result == "WIN")
         {
-            winImage.SetActive(true);
+            resultTitleText.text = "VICTORY";
+            resultTitleText.color = VictoryColor;
         }
-        else if(result == "LOSE")
+        else if (result == "LOSE")
         {
-            loseImage.SetActive(true);
+            resultTitleText.text = "DEFEAT";
+            resultTitleText.color = DefeatColor;
         }
         else if (result == "DRAW")
         {
-            drawImage.SetActive(true);
+            resultTitleText.text = "DRAW";
+            resultTitleText.color = DrawColor;
         }
         else
         {
-            Debug.LogError("[BattleUIManager] PrintResultImage(string result) 매개 변수 명 오류");
+            resultTitleText.text = string.Empty;
+            resultTitleText.color = DrawColor;
+
+            Debug.LogError($"[BattleUIManager] 알 수 없는 전투 결과: {result}");
         }
     }
 
@@ -1130,10 +1366,38 @@ public class BattleUIManager : SceneSingleton<BattleUIManager>
         }
         resultRankingPointText.text = Mathf.Abs(delta).ToString();
 
+        // 랭킹 점수 변화값 색상 적용
+        Color deltaColor;
+        if (delta > 0)
+        {
+            deltaColor = PositiveColor;
+        }
+        else if (delta < 0)
+        {
+            deltaColor = NegativeColor;
+        }
+        else
+        {
+            deltaColor = NeutralColor;
+        }
+        operatorText.color = deltaColor;
+        resultRankingPointText.color = deltaColor;
     }
 
     public void SetMatchStartButtonInteractable(bool interactable)
     {
         matchStartButton.interactable = interactable;
+    }
+
+    private sealed class EquipmentButtonVisualState
+    {
+        public Button Button;
+        public EquipmentType Type;
+        public ColorBlock DefaultColors;
+        public Color DefaultImageColor;
+        public Color DefaultTextColor;
+        public Outline Outline;
+        public bool DefaultOutlineEnabled;
+        public Color DefaultOutlineColor;
     }
 }

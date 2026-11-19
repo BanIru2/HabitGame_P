@@ -1,4 +1,5 @@
 using System;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -7,14 +8,18 @@ public class TitleSlotUI : MonoBehaviour
     [SerializeField]
     private Image titleBadgeImage;     // 가로형 칭호 배지 이미지
     [SerializeField]
+    private TextMeshProUGUI titleNameText;
+    [SerializeField]
+    private TextMeshProUGUI equippedStatusText;
+    [SerializeField]
     private Image borderImage;         // 테두리 이미지 (색상 적용)
     [SerializeField]
     private Button slotButton;         // 슬롯 전체를 클릭할 버튼
 
     private TitleDataSO titleData;
 
-    private static readonly Color32 EquippedColor = new Color32(255, 215, 0, 255); // 장착 중 (노란색)
-    private static readonly Color32 NormalColor = new Color32(40, 40, 40, 255);    // 미장착 (검정색)
+    private static readonly Color32 EquippedColor = new Color32(217, 164, 65, 255);
+    private static readonly Color32 NormalColor = new Color32(201, 168, 120, 140);
 
     public void LoadData(TitleDataSO data, bool isEquipped, Action<TitleDataSO> onClick)
     {
@@ -26,7 +31,21 @@ public class TitleSlotUI : MonoBehaviour
         // 배지 이미지 적용
         if (titleBadgeImage != null && titleData.displaySprite != null)
         {
+            float imageHeight = 78.732f;
+
+            if (titleData.titleId != null && titleData.titleId.EndsWith("_Lv_10", StringComparison.Ordinal))
+            {
+                imageHeight = 102.06f;
+            }
+
+            titleBadgeImage.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, imageHeight);
+
             titleBadgeImage.sprite = titleData.displaySprite;
+        }
+
+        if (titleNameText != null)
+        {
+            titleNameText.text = titleData.displayName;
         }
 
         // 장착 중 테두리 표시/숨김
@@ -47,6 +66,10 @@ public class TitleSlotUI : MonoBehaviour
             // 장착 여부에 따라 테두리 색상만 스위칭
             borderImage.color = isEquipped ? EquippedColor : NormalColor;
         }
+        if (equippedStatusText != null)
+        {
+            equippedStatusText.gameObject.SetActive(isEquipped);
+        }
     }
 
     // UI 데이터 초기화
@@ -57,9 +80,17 @@ public class TitleSlotUI : MonoBehaviour
         {
             titleBadgeImage.sprite = null;
         }
+        if (titleNameText != null)
+        {
+            titleNameText.text = "";
+        }
         if (borderImage != null)
         {
             borderImage.color = NormalColor;
+        }
+        if (equippedStatusText != null)
+        {
+            equippedStatusText.gameObject.SetActive(false);
         }
         if (slotButton != null)
         {

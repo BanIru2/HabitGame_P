@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-
+using LayerLab.ArtMakerUnity;
 public class CharacterUIManager : SceneSingleton<CharacterUIManager>
 {
     [SerializeField] 
@@ -51,6 +51,11 @@ public class CharacterUIManager : SceneSingleton<CharacterUIManager>
 
     [SerializeField]
     private TitleManager titleManager;
+    [SerializeField] 
+    private AchievementManager achievementManager;
+
+    [SerializeField]
+    private PartsManager characterPartsManager;
 
     protected override void Awake()
     {
@@ -98,6 +103,19 @@ public class CharacterUIManager : SceneSingleton<CharacterUIManager>
         ApplyAttrExp(response);
 
         SetEquippedTitle(titleManager.GetTitleSprite(response.EquippedTitleId));
+        ApplyEquipmentAppearance(response.EquippedItems);
+    }
+
+    public void ClosePopups()
+    {
+        if (titleManager != null)
+        {
+            titleManager.ClosePreview();
+            titleManager.ClosePopup();
+        }
+
+        if (achievementManager != null)
+            achievementManager.ClosePopup();
     }
 
     public void SetEquippedTitle(Sprite titleSprite)
@@ -106,6 +124,10 @@ public class CharacterUIManager : SceneSingleton<CharacterUIManager>
 
         if (titleSprite != null)
         {
+            bool isLevel10Title = titleSprite == titleManager.GetTitleSprite("Aurora_Lv_10") || titleSprite == titleManager.GetTitleSprite("Fire_Lv_10") || titleSprite == titleManager.GetTitleSprite("Water_Lv_10") || titleSprite == titleManager.GetTitleSprite("Grass_Lv_10");
+
+            equippedTitleImage.rectTransform.sizeDelta = isLevel10Title ? new Vector2(520f, 120f) : new Vector2(520f, 90f);
+
             equippedTitleImage.sprite = titleSprite;
             equippedTitleImage.gameObject.SetActive(true);
         }
@@ -156,5 +178,38 @@ public class CharacterUIManager : SceneSingleton<CharacterUIManager>
         Vector3 scale = fillImage.rectTransform.localScale;
         scale.x = Mathf.Clamp01(percentage / 100f);
         fillImage.rectTransform.localScale = scale;
+    }
+
+    private void ApplyEquipmentAppearance(List<string> equippedItemIds)
+    {
+        if (equippedItemIds == null)
+        {
+            Debug.LogWarning("캐릭터 응답에 equippedItems가 없습니다.");
+            return;
+        }
+
+        Dictionary<PartsType, int> equippedParts = new();
+
+        foreach (string itemId in equippedItemIds)
+        {
+            if (string.IsNullOrWhiteSpace(itemId))
+                continue;
+
+            ItemDataSO item = SORegistry.Instance.GetItem(itemId);
+
+            if (item is not EquipmentDataSO equipment)
+            {
+                Debug.LogWarning($"장비 SO를 찾을 수 없습니다. itemId={itemId}");
+                continue;
+            }
+
+            // 기존 인벤토리와 동일하게 신발은 외형 적용에서 제외
+            if (equipment.equipmentType == EquipmentType.Shoes)
+                continue;
+
+            equippedParts[equipment.partsType] = equipment.PartsIndex;
+        }
+
+        EquipmentAppearanceSynchronizer.Sync(characterPartsManager, equippedParts);
     }
 }

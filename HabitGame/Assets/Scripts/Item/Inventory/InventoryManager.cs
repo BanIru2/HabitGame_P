@@ -1,13 +1,13 @@
+using LayerLab.ArtMakerUnity;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Text;
+using System.Threading.Tasks;
 using TMPro;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.UI;
-using System.Threading.Tasks;
-using System.Text;
-using LayerLab.ArtMakerUnity;
 
 
 public class InventoryManager : SceneSingleton<InventoryManager>
@@ -47,6 +47,10 @@ public class InventoryManager : SceneSingleton<InventoryManager>
     private Image equipIcon;
     [SerializeField]
     private TextMeshProUGUI equipNameText;
+    [SerializeField]
+    private TextMeshProUGUI equipTierText;
+    [SerializeField] 
+    private TextMeshProUGUI equipStatusText;
     [SerializeField]
     private TextMeshProUGUI equipDescText;
     [SerializeField]
@@ -372,7 +376,7 @@ public class InventoryManager : SceneSingleton<InventoryManager>
 
     // ---------------------------------- detail popup ---------------------------------
     // 상세 팝업 모두 비활성화
-    private void ClosePopup()
+    public void ClosePopup()
     {
         popupDim.SetActive(false);
         equipDetail.SetActive(false);
@@ -386,10 +390,60 @@ public class InventoryManager : SceneSingleton<InventoryManager>
         equipDetail.SetActive(true);
         equipIcon.sprite = itemSO.icon;
         equipNameText.text = itemSO.displayName;
+        // 장비 상승 스탯 정보
+        if (equipStatusText != null)
+        {
+            sb.Clear();
+            double multiplier = EquipmentDataSO.GetStatMultiplier(Math.Max(1, data.Level));
+
+            foreach (var bonus in itemSO.statBonuses ?? Array.Empty<StatBonus>())
+            {
+                if (bonus == null || bonus.value == 0f)
+                    continue;
+
+                string statName = bonus.statType switch
+                {
+                    StatType.ATK => "공격력",
+                    StatType.DEF => "방어력",
+                    StatType.HP => "최대 체력",
+                    StatType.SPD => "속도",
+                    StatType.CRIT => "치명타율",
+                    _ => null
+                };
+
+                if (statName == null)
+                    continue;
+
+                if (sb.Length > 0)
+                    sb.AppendLine();
+
+                bool isCrit = bonus.statType == StatType.CRIT;
+                double baseValue = bonus.value;
+                double scaledValue = baseValue * multiplier;
+
+                double totalValue = isCrit ? scaledValue : Math.Round(scaledValue, MidpointRounding.AwayFromZero);
+
+                double enhancementGain = totalValue - baseValue;
+                string format = isCrit ? "0.##%" : "0.##";
+
+                sb.Append(statName)
+                  .Append(" +").Append(totalValue.ToString(format))
+                  .Append(" (").Append(baseValue.ToString(format))
+                  .Append(" + ").Append(enhancementGain.ToString(format))
+                  .Append(')');
+            }
+
+            equipStatusText.SetText(sb);
+        }
+
         equipDescText.text = itemSO.description;
 
+        // 티어 텍스트 및 색상 적용
+        equipTierText.SetText("{0}티어", itemSO.Tier);
+        equipTierText.color = itemSO.TierColor;
+
         doEquipButtonText.text = data.IsEquipped ? "해제하기" : "장착하기";
-        doEquipButton.image.color = data.IsEquipped ? Color.red : new Color32(50,184,255, 255);
+        doEquipButton.image.color = data.IsEquipped ? Color.red : Color.white;
     }
 
     private void OpenConsumDetail(InventoryItemResponse data, ConsumableDataSO itemSO)
@@ -698,13 +752,38 @@ public class InventoryManager : SceneSingleton<InventoryManager>
         {
             if (item.Response.Quantity <= 0) continue;
 
-            if (item.ItemSO is ConsumableDataSO consumableSO && consumableSO.useTiming == ItemUseTiming.BattlePreparation)
+            if (item.ItemSO is ConsumableDataSO consumableSO && consumableSO.useTiming == ItemUseTiming.BattlePreparation && consumableSO.effectType == ItemEffectType.BattleStatUp)
             {
                 result.Add(item);
             }
         }
 
         return result;
+    }
+
+    public InventoryItemViewData GetAttributeScouterData()
+    {
+        foreach (InventoryItemViewData item in consumableItems)
+        {
+            if (item.Response.Quantity <= 0) continue;
+
+            if (item.ItemSO is ConsumableDataSO consumableSO && consumableSO.useTiming == ItemUseTiming.BattlePreparation && consumableSO.effectType == ItemEffectType.AttributeScout)
+            {
+                return item;
+            }
+        }
+        return null;
+    }
+
+    // PvP에서 사용 후 로컬 상 차감처리(연속 전투 대비)
+    public void ApplyAttributeScoutUse()
+    {
+        InventoryItemViewData data = GetAttributeScouterData();
+
+        if (data != null)
+        {
+            data.Response.Quantity--;
+        }
     }
 
     public async Task<List<InventoryItemResponse>> UseInventoryItemAsync(long inventoryId)

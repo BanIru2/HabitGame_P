@@ -1,7 +1,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq.Expressions;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -24,7 +23,14 @@ public class ItemSlotUI : MonoBehaviour
     [SerializeField]
     private GameObject quantityBackground;
     [SerializeField]
+    private GameObject equipTypeBadge;
+    [SerializeField]
     private TextMeshProUGUI equipTypeText;
+    [SerializeField]
+    private Image equipTierBackground;
+    [SerializeField]
+    private TextMeshProUGUI equipTierText;
+
 
     [SerializeField]
     private Color normalColor = new Color32(202,202,202,255);
@@ -73,7 +79,8 @@ public class ItemSlotUI : MonoBehaviour
     private void ResetUI()
     {
         quantityBackground.SetActive(false);
-        equipTypeText.gameObject.SetActive(false);
+        equipTypeBadge.gameObject.SetActive(false);
+        equipTierBackground.gameObject.SetActive(false);
         iconImage.enabled = false;
         backgroundImage.color = normalColor;
     }
@@ -135,8 +142,13 @@ public class ItemSlotUI : MonoBehaviour
         ApplyEquipLevel(equipSO);
 
         // 부위 표시
-        equipTypeText.gameObject.SetActive(true);
+        equipTypeBadge.gameObject.SetActive(true);
         equipTypeText.text = GetEquipmentTypeName(equipSO.equipmentType);
+
+        // 티어 표시
+        equipTierBackground.color = equipSO.TierColor;
+        equipTierText.SetText("{0}티어", equipSO.Tier);
+        equipTierBackground.gameObject.SetActive(true);
 
         // 착용 여부에 따른 배경색 적용
         backgroundImage.color = GetDefaultBackgroundColor();

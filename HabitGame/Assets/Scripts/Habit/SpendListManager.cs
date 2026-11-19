@@ -23,6 +23,11 @@ public class SpendListManager : MonoBehaviour
     [SerializeField] private Button skipButton;
     [SerializeField] private Button completeButton;
 
+    [Header("Skip Confirmation Popup")]
+    [SerializeField] private GameObject skipConfirmPopup;
+    [SerializeField] private Button cancelSkipButton;
+    [SerializeField] private Button confirmSkipButton;
+
     [Header("Reward")]
     [SerializeField] private int reward = 300;
 
@@ -60,8 +65,17 @@ public class SpendListManager : MonoBehaviour
         if (spendItemPrefab != null)
             spendItemPrefab.SetActive(false);
 
+        if (skipConfirmPopup != null)
+            skipConfirmPopup.SetActive(false);
+
         if (skipButton != null)
-            skipButton.onClick.AddListener(SkipSpecialGoals);
+            skipButton.onClick.AddListener(OpenSkipConfirmPopup);
+
+        if (cancelSkipButton != null)
+            cancelSkipButton.onClick.AddListener(CloseSkipConfirmPopup);
+
+        if (confirmSkipButton != null)
+            confirmSkipButton.onClick.AddListener(ConfirmSkipSpecialGoals);
 
         if (completeButton != null)
             completeButton.onClick.AddListener(CompleteSpecialGoals);
@@ -202,15 +216,20 @@ public class SpendListManager : MonoBehaviour
         string goalName,
         int limitAmount)
     {
+
         GameObject newItem =
             Instantiate(
                 specialGoalPreviewPrefab,
                 previewContent
             );
 
+        // 비활성화된 템플릿에서 생성한 항목 활성화
+        newItem.SetActive(true);
+
         runtimePreviewItems.Add(
             newItem
         );
+
 
         Transform goalNameTransform =
             newItem.transform.Find(
@@ -419,6 +438,33 @@ public class SpendListManager : MonoBehaviour
             $"Spend 메인 목표 표시 완료 : " +
             $"{goal.GoalName} / ID : {specialGoalId}"
         );
+    }
+
+    public void OpenSkipConfirmPopup()
+    {
+        if (isSaving || IsSpecialGoalSettingFinishedThisWeek())
+            return;
+
+        if (pendingSpecialGoals.Count > 0)
+        {
+            Debug.LogWarning("이미 추가한 목표가 있습니다. 완료 버튼을 눌러주세요.");
+            return;
+        }
+
+        if (skipConfirmPopup != null)
+            skipConfirmPopup.SetActive(true);
+    }
+
+    public void CloseSkipConfirmPopup()
+    {
+        if (skipConfirmPopup != null)
+            skipConfirmPopup.SetActive(false);
+    }
+
+    public void ConfirmSkipSpecialGoals()
+    {
+        CloseSkipConfirmPopup();
+        SkipSpecialGoals();
     }
 
     // =========================================================
@@ -783,20 +829,28 @@ public class SpendListManager : MonoBehaviour
 
 #endif
 
+
     private void OnDestroy()
     {
         if (skipButton != null)
         {
-            skipButton.onClick.RemoveListener(
-                SkipSpecialGoals
-            );
+            skipButton.onClick.RemoveListener(OpenSkipConfirmPopup);
+        }
+
+        if (cancelSkipButton != null)
+        {
+            cancelSkipButton.onClick.RemoveListener(CloseSkipConfirmPopup);
+        }
+
+        if (confirmSkipButton != null)
+        {
+            confirmSkipButton.onClick.RemoveListener(ConfirmSkipSpecialGoals);
         }
 
         if (completeButton != null)
         {
-            completeButton.onClick.RemoveListener(
-                CompleteSpecialGoals
-            );
+            completeButton.onClick.RemoveListener(CompleteSpecialGoals);
         }
     }
+
 }
