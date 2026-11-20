@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="./docs/images/HabitGame_Equipment.gif" alt="장비 시스템 시연" width="35%" />
-  <img src="./docs/images/HabitGame_PvP.gif" alt="1대1 자동 턴제 PvP 시연" width="35%" />
+  <img src="./docs/images/HabitGame_PvP_Reshoot.gif" alt="1대1 자동 턴제 PvP 시연" width="35%" />
 </p>
 
 > 생활·소비 습관의 목표 달성을 캐릭터 성장과 재화 보상으로 연결하고, 아이템 구매·장비 강화·1대1 자동 턴제 PvP로 이어가는 **습관 형성 도우미 게이미피케이션 앱**입니다.<br>
